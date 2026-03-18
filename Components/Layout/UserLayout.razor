@@ -1,0 +1,203 @@
+﻿@namespace ECommerce.Components.Layout
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+@inject ICartService CartService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject IJSRuntime JSRuntime
+
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+
+<MudLayout>
+
+    <MudAppBar Elevation="0" Style="@appBarStyle">
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingBag"
+                     Style="font-size:1.8rem; color:#6C63FF;" />
+            <MudText Typo="Typo.h6"
+                     Style="font-weight:800; color:#6C63FF;">
+                ECommerce
+            </MudText>
+        </MudStack>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Spacing="0" Class="mx-6 d-none d-md-flex">
+            <MudButton Href="/user/dashboard"
+                       Variant="Variant.Text"
+                       Style="@GetNavStyle("/user/dashboard")">
+                Home
+            </MudButton>
+            <MudButton Href="/user/products"
+                       Variant="Variant.Text"
+                       Style="@GetNavStyle("/user/products")">
+                Products
+            </MudButton>
+            <MudButton Href="/user/orders"
+                       Variant="Variant.Text"
+                       Style="@GetNavStyle("/user/orders")">
+                Orders
+            </MudButton>
+            <MudButton Href="/user/History"
+                       Variant="Variant.Text"
+                       Style="@GetNavStyle("/user/History")">
+                History
+            </MudButton>
+        </MudStack>
+
+        <MudSpacer />
+
+        <MudSpacer />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+
+            <MudTooltip Text="Cart">
+                <MudBadge Content="@cartCount"
+                          Color="Color.Error"
+                          Overlap="true"
+                          Visible="@(cartCount > 0)">
+                    <MudIconButton Icon="@Icons.Material.Filled.ShoppingCart"
+                                   Color="Color.Inherit"
+                                   Href="/user/cart" />
+                </MudBadge>
+            </MudTooltip>
+
+            <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
+                <a href="/account/logout" style="text-decoration:none;"> 
+                    <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                                   Style="color:#EF4444;"
+                                   OnClick="OpenLogoutDialog" />
+                </a> 
+            </MudTooltip>
+
+            <MudMenu AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     Class="ml-1">
+                <ActivatorContent>
+                    <MudAvatar Style="cursor:pointer;
+                                      background:linear-gradient(135deg,#6C63FF,#FF6584);
+                                      width:36px; height:36px;">
+                        <MudText Style="color:white; font-weight:700;
+                                        font-size:14px;">
+                            @userInitials
+                        </MudText>
+                    </MudAvatar>
+                </ActivatorContent>
+
+            </MudMenu>
+
+        </MudStack>
+    </MudAppBar>
+
+    <MudMainContent Style="@mainContentStyle">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+</MudLayout>
+
+@code {
+    private bool _isDarkMode = false;
+    private string searchQuery = string.Empty;
+    private string userName = string.Empty;
+    private string userEmail = string.Empty;
+    private string userInitials = "U";
+    private string userId = string.Empty;
+    private int cartCount = 0;
+
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#6C63FF",
+            Secondary = "#FF6584",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#1A1A2E",
+            Background = "#F4F6FB",
+            Surface = "#FFFFFF",
+            TextPrimary = "#1A1A2E",
+            TextSecondary = "#6B7280",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#6C63FF",
+            Secondary = "#FF6584",
+            AppbarBackground = "#111827",
+            AppbarText = "#F9FAFB",
+            Background = "#0D1117",
+            Surface = "#161B22",
+            TextPrimary = "#F9FAFB",
+            TextSecondary = "#9CA3AF",
+        }
+    };
+
+    private string appBarStyle => _isDarkMode
+        ? "background:#111827; border-bottom:1px solid rgba(255,255,255,0.06);"
+        : "background:#FFFFFF; border-bottom:1px solid rgba(0,0,0,0.06);";
+
+    private string mainContentStyle => _isDarkMode
+        ? "background:#0D1117; min-height:100vh;"
+        : "background:#F4F6FB; min-height:100vh;";
+
+    private string GetNavStyle(string path)
+    {
+        var isActive = Navigation.Uri.Contains(path);
+        return isActive
+            ? "color:#6C63FF; font-weight:700;"
+            : (_isDarkMode ? "color:#9CA3AF;" : "color:#4B5563;");
+    }
+
+    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
+
+    private void HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrEmpty(searchQuery))
+            Navigation.NavigateTo(
+                $"/user/products?search={searchQuery}");
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? string.Empty;
+            var firstName = user.FindFirst(
+                System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "";
+            var lastName = user.FindFirst(
+                System.Security.Claims.ClaimTypes.Surname)?.Value ?? "";
+
+            userName = $"{firstName} {lastName}".Trim();
+            userEmail = user.FindFirst(
+                System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
+            userInitials = $"{firstName.FirstOrDefault()}{lastName.FirstOrDefault()}"
+                .ToUpper();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                cartCount = await CartService.GetCartCountAsync(userId);
+            }
+        }
+    }
+
+    private async Task OpenLogoutDialog()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to logout?");
+        if (confirmed)
+        {
+            Navigation.NavigateTo("/account/logout", forceLoad: true);
+        }
+    }
+
+
+}

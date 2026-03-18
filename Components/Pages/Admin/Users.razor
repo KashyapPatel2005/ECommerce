@@ -1,0 +1,256 @@
+﻿@page "/admin/users"
+@rendermode InteractiveServer
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+
+<PageTitle>Users — ECommerce Admin</PageTitle>
+
+
+<MudPaper Elevation="0" Class="rounded-lg"
+          Style="border:1px solid var(--mud-palette-divider);">
+    @if (isLoading)
+    {
+        <MudStack AlignItems="AlignItems.Center"
+                  Justify="Justify.Center" Class="py-12">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <MudText Color="Color.Secondary">Loading users...</MudText>
+        </MudStack>
+    }
+    else if (!filteredUsers.Any())
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-12">
+            <MudIcon Icon="@Icons.Material.Filled.People"
+                     Style="font-size:4rem; color:#D1D5DB;" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary">
+                No users found
+            </MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudTable Items="@filteredUsers"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Elevation="0"
+                  RowsPerPage="10">
+            <HeaderContent>
+                <MudTh>User</MudTh>
+                <MudTh>Email</MudTh>
+                <MudTh>Role</MudTh>
+                <MudTh>Joined</MudTh>
+                <MudTh>Actions</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudStack Row="true" AlignItems="AlignItems.Center"
+                              Spacing="2">
+                        <MudAvatar Color="Color.Primary"
+                                   Style="width:38px; height:38px;">
+                            @context.FirstName[0]@context.LastName[0]
+                        </MudAvatar>
+                        <div>
+                            <MudText Typo="Typo.body2" Style="font-weight:600;">
+                                @context.FirstName @context.LastName
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                ID: @context.Id[..8]...
+                            </MudText>
+                        </div>
+                    </MudStack>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@context.Email</MudText>
+                </MudTd>
+                <MudTd>
+                    @{
+                        var role = userRoles.GetValueOrDefault(context.Id, "User");
+                    }
+                    <MudChip T="string" Size="Size.Small"
+                             Style="@GetRoleStyle(role)">
+                        @role
+                    </MudChip>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">
+                        @context.CreatedAt.ToString("MMM dd, yyyy")
+                    </MudText>
+                </MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="0">
+                        <MudTooltip Text="@(context.IsActive
+                                           ? "Deactivate" : "Activate")">
+                            <MudIconButton
+                                Icon="@(context.IsActive
+                                        ? Icons.Material.Filled.Person
+                                        : Icons.Material.Filled.PersonOff)"
+                                Size="Size.Small"
+                                Color="@(context.IsActive
+                                         ? Color.Success : Color.Warning)"
+                                OnClick="@(() => ToggleStatus(context))" />
+                        </MudTooltip>
+                        <MudTooltip Text="Arrow Bottom" Arrow="true" Placement="Placement.Bottom">
+                     
+                        </MudTooltip>
+                           <MudIconButton
+                            Icon="@Icons.Material.Filled.ManageAccounts"
+                            Size="Size.Small"
+                            Color="Color.Primary"
+                             OnClick="@(() => OpenRoleDialog(context))" />
+              
+                       
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+<MudDialog @bind-Visible="showRoleDialog"
+           Options="@(new DialogOptions {
+               MaxWidth = MaxWidth.ExtraSmall,
+               FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-weight:700;">
+            Change Role
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Change role for <b>@selectedUser?.FirstName @selectedUser?.LastName</b>
+        </MudText>
+        <MudSelect @bind-Value="newRole"
+                   Label="Select Role"
+                   Variant="Variant.Outlined"
+                   FullWidth="true">
+            <MudSelectItem Value="@("User")">User</MudSelectItem>
+            <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+        </MudSelect>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="@(() => showRoleDialog = false)">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveRole">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool isLoading = true;
+    private bool showRoleDialog = false;
+    private string searchQuery = string.Empty;
+    private string roleFilter = "all";
+    private string newRole = "User";
+
+    private List<ApplicationUser> allUsers = new();
+    private List<ApplicationUser> filteredUsers = new();
+    private Dictionary<string, string> userRoles = new();
+    private ApplicationUser? selectedUser = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        allUsers = await UserService.GetAllAsync();
+
+            userRoles.Clear();
+        foreach (var user in allUsers)
+        {
+            var role = await UserService.GetUserRoleAsync(user.Id);
+            userRoles[user.Id] = role;
+        }
+
+        ApplyFilters();
+        isLoading = false;
+    }
+
+    private void ApplyFilters()
+    {
+        filteredUsers = allUsers;
+
+        if (!string.IsNullOrEmpty(searchQuery))
+            filteredUsers = filteredUsers
+                .Where(u => u.FirstName.Contains(
+                                searchQuery,
+                                StringComparison.OrdinalIgnoreCase) ||
+                            u.LastName.Contains(
+                                searchQuery,
+                                StringComparison.OrdinalIgnoreCase) ||
+                            u.Email!.Contains(
+                                searchQuery,
+                                StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        if (roleFilter != "all")
+            filteredUsers = filteredUsers
+                .Where(u => userRoles.GetValueOrDefault(u.Id) == roleFilter)
+                .ToList();
+    }
+
+    private void ClearFilters()
+    {
+        searchQuery = string.Empty;
+        roleFilter = "all";
+        ApplyFilters();
+    }
+
+    private async Task ToggleStatus(ApplicationUser user)
+    {
+        var (success, message) = await UserService.UpdateStatusAsync(
+            user.Id, !user.IsActive);
+        if (success)
+        {
+            Snackbar.Add(message, Severity.Success);
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+    }
+
+    private void OpenRoleDialog(ApplicationUser user)
+    {
+        selectedUser = user;
+        newRole = userRoles.GetValueOrDefault(user.Id, "User");
+        showRoleDialog = true;
+    }
+
+    private async Task SaveRole()
+    {
+        if (selectedUser == null) return;
+
+        var (success, message) = await UserService.ChangeRoleAsync(
+            selectedUser.Id, newRole);
+        if (success)
+        {
+            Snackbar.Add(message, Severity.Success);
+            showRoleDialog = false;
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+    }
+
+    private string GetRoleStyle(string role) => role switch
+    {
+        "Admin" => "background:#EEF2FF; color:#6C63FF; font-weight:600;",
+        _       => "background:#F3F4F6; color:#6B7280; font-weight:600;"
+    };
+
+    private string GetStatusStyle(bool isActive) => isActive
+        ? "background:#ECFDF5; color:#10B981; font-weight:600;"
+        : "background:#FEF2F2; color:#EF4444; font-weight:600;";
+}

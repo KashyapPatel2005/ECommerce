@@ -1,0 +1,318 @@
+﻿@page "/admin/categories"
+@rendermode InteractiveServer
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+@inject ICategoryService CategoryService
+@inject ISnackbar Snackbar
+
+<PageTitle>Categories — ECommerce Admin</PageTitle>
+
+<MudStack Row="true" AlignItems="AlignItems.Center"
+          Justify="Justify.SpaceBetween" Class="mb-6">
+    <div>
+        <MudText Typo="Typo.h4" Style="font-weight:700;">Categories</MudText>
+    </div>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="OpenAddDialog">
+        Add Category
+    </MudButton>
+</MudStack>
+
+@if (isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center" Class="py-12">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </MudStack>
+}
+else
+{
+    <MudGrid>
+        @foreach (var category in categories)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudPaper Elevation="0" Class="pa-4 rounded-lg"
+                          Style="border:1px solid var(--mud-palette-divider);">
+                    <MudStack Row="true" AlignItems="AlignItems.Center"
+                              Justify="Justify.SpaceBetween">
+                        <MudStack Row="true" AlignItems="AlignItems.Center"
+                                  Spacing="2">
+                            <MudAvatar Style="background:#EEF2FF;
+                                              width:48px; height:48px;">
+                                <MudIcon Icon="@Icons.Material.Filled.Category"
+                                         Style="color:#6C63FF;" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.body1"
+                                         Style="font-weight:700;">
+                                    @category.Name
+                                </MudText>
+                                <MudText Typo="Typo.caption"
+                                         Color="Color.Success">
+                                    @category.Products.Count products
+                                </MudText>
+                            </div>
+                        </MudStack>
+                        <MudStack Row="true" Spacing="0">
+
+                            <MudTooltip Text="Edit" Arrow="true" Placement="Placement.Bottom">
+                                <MudIconButton
+                                Icon="@Icons.Material.Filled.Edit"
+                                Size="Size.Small"
+                                Color="Color.Primary"
+                                OnClick="@(() => OpenEditDialog(category))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Delete" Arrow="true" Placement="Placement.Bottom">
+                                <MudIconButton
+                                Icon="@Icons.Material.Filled.Delete"
+                                Size="Size.Small"
+                                Color="Color.Error"
+                                OnClick="@(() => DeleteCategory(category))" />
+                            </MudTooltip>
+                      
+                        </MudStack>
+                    </MudStack>
+
+                    @if (!string.IsNullOrEmpty(category.Description))
+                    {
+                        <MudText Typo="Typo.body2"
+                                 Color="Color.Secondary" Class="mt-2">
+                            @category.Description
+                        </MudText>
+                    }
+
+                    <MudDivider Class="my-3" />
+
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        @* <MudChip T="string" Size="Size.Small"
+                                 Style="@(category.IsActive
+                                    ? "background:#ECFDF5; color:#10B981;"
+                                    : "background:#F3F4F6; color:#6B7280;")">
+                            @(category.IsActive ? "Active" : "Inactive")
+                        </MudChip> *@
+                        <MudText Typo="Typo.caption" Color="Color.Primary">
+                            Created @category.CreatedAt.ToString("MMM dd, yyyy")
+                        </MudText>
+                    </MudStack>
+                </MudPaper>
+            </MudItem>
+        }
+
+        @if (!categories.Any())
+        {
+            <MudItem xs="12">
+                <MudStack AlignItems="AlignItems.Center" Class="py-12">
+                    <MudIcon Icon="@Icons.Material.Filled.Category"
+                             Style="font-size:4rem; color:#D1D5DB;" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">
+                        No categories yet
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="OpenAddDialog">
+                        Add First Category
+                    </MudButton>
+                </MudStack>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+<MudDialog @bind-Visible="showDialog" Options="dialogOptions">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-weight:700;">
+            @(isEditing ? "Edit Category" : "Add New Category")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="categoryForm" @bind-IsValid="formIsValid">
+            <MudTextField @bind-Value="categoryModel.Name"
+                          Label="Category Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          RequiredError="Category name is required"
+                          FullWidth="true"
+                          Class="mb-4" />
+            <MudTextField @bind-Value="categoryModel.Description"
+                          Label="Description"
+                          Variant="Variant.Outlined"
+                          Lines="3"
+                          FullWidth="true"
+                          Class="mb-4" />
+            <MudTextField @bind-Value="categoryModel.ImageUrl"
+                          Label="Image URL"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Image"
+                          FullWidth="true"
+                          Class="mb-4" />
+            @* <MudSwitch @bind-Value="categoryModel.IsActive"
+                       Label="Active"
+                       Color="Color.Primary" /> *@
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="CloseDialog">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@isSaving"
+                   OnClick="SaveCategory">
+            @if (isSaving)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true" Class="mr-2" />
+                <span>Saving...</span>
+            }
+            else
+            {
+                <span>@(isEditing ? "Update" : "Add Category")</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<MudDialog @bind-Visible="showDeleteConfirm"
+           Options="@(new DialogOptions {
+               MaxWidth = MaxWidth.ExtraSmall,
+               FullWidth = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6"
+                 Style="font-weight:700; color:#EF4444;">
+            Confirm Delete
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>
+            Are you sure you want to delete
+            <b>@categoryToDelete?.Name</b>?
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" OnClick="CancelDelete">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   OnClick="ConfirmDeleteCategory">
+            Delete
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool isLoading = true;
+    private bool showDialog = false;
+    private bool isEditing = false;
+    private bool isSaving = false;
+    private bool formIsValid = false;
+    private bool showDeleteConfirm = false;
+
+    private List<Category> categories = new();
+    private Category categoryModel = new();
+    private Category? categoryToDelete = null;
+    private MudForm categoryForm = default!;
+
+    private DialogOptions dialogOptions = new()
+    {
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true,
+        CloseOnEscapeKey = true
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        categories = await CategoryService.GetAllAsync();
+        isLoading = false;
+    }
+
+    private void OpenAddDialog()
+    {
+        isEditing = false;
+        categoryModel = new Category { IsActive = true };
+        showDialog = true;
+    }
+
+    private void OpenEditDialog(Category category)
+    {
+        isEditing = true;
+        categoryModel = new Category
+        {
+            Id = category.Id,
+            Name = category.Name,
+            Description = category.Description,
+            ImageUrl = category.ImageUrl,
+            IsActive = category.IsActive
+        };
+        showDialog = true;
+    }
+
+    private void CloseDialog()
+    {
+        showDialog = false;
+        categoryModel = new();
+    }
+
+    private async Task SaveCategory()
+    {
+        await categoryForm.Validate();
+        if (!formIsValid) return;
+
+        isSaving = true;
+
+        var (success, message) = isEditing
+            ? await CategoryService.UpdateAsync(categoryModel)
+            : await CategoryService.CreateAsync(categoryModel);
+
+        if (success)
+        {
+            Snackbar.Add(message, Severity.Success);
+            CloseDialog();
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+
+        isSaving = false;
+    }
+
+    private void DeleteCategory(Category category)
+    {
+        categoryToDelete = category;
+        showDeleteConfirm = true;
+    }
+
+    private async Task ConfirmDeleteCategory()
+    {
+        if (categoryToDelete == null) return;
+        var (success, message) = await CategoryService.DeleteAsync(categoryToDelete.Id);
+        if (success)
+        {
+            Snackbar.Add(message, Severity.Success);
+            await LoadData();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+        categoryToDelete = null;
+        showDeleteConfirm = false;
+    }
+
+    private void CancelDelete()
+    {
+        categoryToDelete = null;
+        showDeleteConfirm = false;
+    }
+}

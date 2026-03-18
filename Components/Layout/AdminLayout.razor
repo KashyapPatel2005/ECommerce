@@ -1,0 +1,267 @@
+﻿@namespace ECommerce.Components.Layout
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject AuthService AuthService
+
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+
+<MudLayout>
+
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Persistent"
+               Elevation="0"
+               Style="@sidebarStyle">
+
+       
+        <MudDrawerHeader Style="padding:16px;">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.ShoppingBag"
+                         Style="font-size:2rem; color:#6C63FF;" />
+                <MudText Typo="Typo.h6" Style="font-weight:700; color:#6C63FF;">
+                    ECommerce
+                </MudText>
+            </MudStack>
+        </MudDrawerHeader>
+
+        <MudDivider />
+
+        <MudStack AlignItems="AlignItems.Center" Class="pa-4" Spacing="1">
+            <MudAvatar Color="Color.Primary"
+                       Style="width:56px; height:56px; font-size:1.5rem;">
+                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" />
+            </MudAvatar>
+            <MudText Typo="Typo.body1" Style="font-weight:600;">
+                Admin Panel
+            </MudText>
+        </MudStack>
+
+        <MudDivider Class="mb-2" />
+
+        <MudNavMenu>
+
+            <MudText Typo="Typo.caption"
+                     Style="padding:8px 16px; color:#9CA3AF; font-weight:600;
+                            letter-spacing:1px;">
+                MAIN MENU
+            </MudText>
+
+            <MudNavLink Href="/admin/dashboard"
+                        Icon="@Icons.Material.Filled.Dashboard"
+                        Match="NavLinkMatch.All"
+                        Style="@navLinkStyle">
+                Dashboard
+            </MudNavLink>
+
+            <MudText Typo="Typo.caption"
+                     Style="padding:8px 16px; margin-top:8px; color:#9CA3AF;
+                            font-weight:600; letter-spacing:1px;">
+                INVENTORY
+            </MudText>
+
+            <MudNavLink Href="/admin/products"
+                        Icon="@Icons.Material.Filled.Inventory2"
+                        Style="@navLinkStyle">
+                Products
+            </MudNavLink>
+
+            <MudNavLink Href="/admin/categories"
+                        Icon="@Icons.Material.Filled.Category"
+                        Style="@navLinkStyle">
+                Categories
+            </MudNavLink>
+
+            <MudText Typo="Typo.caption"
+                     Style="padding:8px 16px; margin-top:8px; color:#9CA3AF;
+                            font-weight:600; letter-spacing:1px;">
+                SALES
+            </MudText>
+
+            <MudNavLink Href="/admin/orders"
+                        Icon="@Icons.Material.Filled.ShoppingCart"
+                        Style="@navLinkStyle">
+                Orders
+            </MudNavLink>
+
+            <MudNavLink Href="/admin/users"
+                        Icon="@Icons.Material.Filled.People"
+                        Style="@navLinkStyle">
+                Users
+            </MudNavLink>
+
+        </MudNavMenu>
+
+        <MudSpacer />
+
+        <MudDivider />
+
+        @* <MudNavMenu Class="pa-2">
+            <MudNavLink Icon="@Icons.Material.Filled.Logout"
+                        Style="color:#EF4444; margin:8px 0;"
+                        OnClick="HandleLogout">
+                Logout
+            </MudNavLink>
+        </MudNavMenu> *@
+
+        <div style="padding:12px;">
+            <a href="/account/logout"
+               style="display:flex; align-items:center; gap:8px;
+              color:#EF4444; text-decoration:none;
+              padding:10px 16px; border-radius:10px;
+              font-weight:600; font-size:14px;
+              border:1px solid rgba(239,68,68,0.3);
+              transition:background 0.2s ease;"
+               onmouseover="this.style.background='rgba(239,68,68,0.05)'"
+               onmouseout="this.style.background='transparent'">
+                <span class="mud-icon-root mud-svg-icon"
+                      style="font-size:1.2rem;">
+                    <svg style="width:20px; height:20px; fill:#EF4444;"
+                         focusable="false" viewBox="0 0 24 24">
+                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58
+                         2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2
+                         2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                    </svg>
+                </span>
+                Logout
+            </a>
+        </div>
+
+    </MudDrawer>
+
+    <!-- Top App Bar -->
+    <MudAppBar Elevation="0" Style="">
+        @* <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       OnClick="ToggleDrawer" /> *@
+
+        @* <MudText Typo="Typo.h6" Style="font-weight:600;">
+            @pageTitle
+        </MudText> *@
+
+        <MudSpacer />
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+
+            @* <MudTooltip Text="@(_isDarkMode ? "Light Mode" : "Dark Mode")">
+                <MudIconButton Icon="@(_isDarkMode
+                                                           ? Icons.Material.Filled.LightMode
+                                                           : Icons.Material.Filled.DarkMode)"
+                               OnClick="ToggleDarkMode"
+                               Color="Color.Inherit" />
+            </MudTooltip>
+
+            <MudTooltip Text="Notifications">
+                <MudBadge Content="@pendingOrders"
+                          Color="Color.Error"
+                          Overlap="true"
+                          Visible="@(pendingOrders > 0)">
+                    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                                   Color="Color.Inherit" />
+                </MudBadge>
+            </MudTooltip> *@
+
+
+
+            <MudAvatar Color="Color.Primary"
+                       Style="cursor:pointer; margin-left:8px;
+                              width:36px; height:36px;">
+                <MudIcon Icon="@Icons.Material.Filled.Person" />
+            </MudAvatar>
+
+        </MudStack>
+    </MudAppBar>
+
+    <!-- Main Content -->
+    <MudMainContent Style="@mainContentStyle">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+
+</MudLayout>
+
+@code { 
+    private bool _isDarkMode = false;
+    private bool _drawerOpen = true;
+    private int pendingOrders = 0;
+    private string pageTitle = "Dashboard";
+
+    private MudTheme _theme = new MudTheme
+    {
+        PaletteLight = new PaletteLight
+        {
+            Primary = "#6C63FF",
+            Secondary = "#FF6584",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#1A1A2E",
+            Background = "#F8F9FA",
+            Surface = "#FFFFFF",
+            TextPrimary = "#1A1A2E",
+            TextSecondary = "#6B7280",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#1A1A2E",
+        },
+        PaletteDark = new PaletteDark
+        {
+            Primary = "#6C63FF",
+            Secondary = "#FF6584",
+            AppbarBackground = "#1A1A2E",
+            AppbarText = "#FFFFFF",
+            Background = "#0F0F1A",
+            Surface = "#1A1A2E",
+            TextPrimary = "#FFFFFF",
+            TextSecondary = "#9CA3AF",
+            DrawerBackground = "#1A1A2E",
+            DrawerText = "#FFFFFF",
+        }
+    };
+
+    private string sidebarStyle => _isDarkMode
+        ? "background:#1A1A2E; border-right:1px solid #2D2D44; width:260px;"
+        : "background:#FFFFFF; border-right:1px solid #E5E7EB; width:260px;";
+
+    private string appBarStyle => _isDarkMode
+        ? "background:#1A1A2E; border-bottom:1px solid #2D2D44; left:260px;"
+        : "background:#FFFFFF; border-bottom:1px solid #E5E7EB; left:260px;";
+
+    private string mainContentStyle => _isDarkMode
+        ? "background:#0F0F1A; min-height:100vh;"
+        : "background:#F8F9FA; min-height:100vh;";
+
+    private string navLinkStyle => _isDarkMode
+        ? "color:#9CA3AF; border-radius:8px; margin:2px 8px;"
+        : "color:#4B5563; border-radius:8px; margin:2px 8px;";
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
+
+    protected override void OnParametersSet()
+    {
+        var uri = Navigation.Uri;
+        pageTitle = uri switch
+        {
+            var u when u.Contains("/admin/dashboard") => "Dashboard",
+            var u when u.Contains("/admin/products") => "Products",
+            var u when u.Contains("/admin/categories") => "Categories",
+            var u when u.Contains("/admin/orders") => "Orders",
+            var u when u.Contains("/admin/users") => "Users",
+            var u when u.Contains("/admin/reports") => "Reports",
+            _ => "Dashboard"
+        };
+    }
+
+    // private async Task HandleLogout()
+    // {
+    //     await AuthService.LogoutAsync();
+    //     Navigation.NavigateTo("/login", forceLoad: true);
+    // }
+
+    private void HandleLogout()
+    {
+        Navigation.NavigateTo("/account/logout", forceLoad: true);
+    }
+
+
+}

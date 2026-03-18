@@ -1,0 +1,247 @@
+﻿@page "/user/products"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject IProductService ProductService
+@inject ICartService CartService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Products — ECommerce</PageTitle>
+
+<style>
+    .product-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+        width:33%;
+    }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(108,99,255,0.15) !important;
+        }
+
+            .product-card:hover .add-cart-btn {
+                opacity: 1 !important;
+                transform: translateY(0) !important;
+            }
+
+    .add-cart-btn {
+        opacity: 0 !important;
+        transform: translateY(8px) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .price-tag {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #6C63FF;
+    }
+
+    .category-chip {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+        .category-chip:hover {
+            transform: scale(1.05);
+        }
+
+    .filter-sidebar {
+        position: sticky;
+        top: 80px;
+    }
+</style>
+
+<MudGrid>
+       <MudItem>
+        <MudStack Spacing="2" Row="true" Wrap="Wrap.Wrap">
+                    @foreach (var product in allProducts)
+                    {
+                <div class="product-card" @onclick="@(() => Navigation.NavigateTo($"/user/info/{product.Id}"))">
+                            <MudPaper Elevation="0" Class="rounded-lg"
+                                      Style="border:1px solid
+                                                         var(--mud-palette-divider);
+                                                         overflow:hidden;">
+                                <MudStack Row="true">
+
+                                    <div style="width:180px; min-width:180px;
+                                                            height:160px; background:#F3F4F6;
+                                                            display:flex; align-items:center;
+                                                            justify-content:center;
+                                                            overflow:hidden;">
+                                        @if (!string.IsNullOrEmpty(
+                                                                    product.MainImageUrl))
+                                        {
+                                    <img src="@product.MainImageUrl"
+                                         alt="@product.Name"
+                                         style="width:100%; height:100%;object-fit:contain;" />
+                                        }
+                                        else
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Inventory2"
+                                                     Style="font-size:3rem;
+                                                                       color:#D1D5DB;" />
+                                        }
+                                    </div>
+                                    <div style="padding:16px; flex:1;">
+                                        <MudStack Row="true"
+                                                  AlignItems="AlignItems.Start"
+                                                  Justify="Justify.SpaceBetween">
+                                            <div style="flex:1;">
+                                                <MudText Typo="Typo.caption"
+                                                         Style="color:#6C63FF;
+                                                                            font-weight:600;
+                                                                            text-transform:uppercase;">
+                                                    @product.Category?.Name
+                                                </MudText>
+                                                <MudText Typo="Typo.h6"
+                                                         Style="font-weight:700;
+                                                                            margin:4px 0;">
+                                                    @product.Name
+                                                </MudText>
+                                            </div>
+
+                                            <div style="text-align:right;
+                                                                    min-width:140px;
+                                                                    padding-left:16px;">
+                                                <MudText Class="price-tag">
+                                                    $@product.Price.ToString("N2")
+                                                </MudText>
+                                                <MudText Typo="Typo.caption"
+                                                         Style="@GetStockColor(product.Stock)"
+                                                         Class="d-block mb-2">
+                                                    @GetStockLabel(product.Stock)
+                                                </MudText>
+                                            <div @onclick:stopPropagation="true">
+
+                                            <MudButton Variant="Variant.Filled"
+                                                               Color="Color.Primary"
+                                                               Size="Size.Small"
+                                                            
+                                                               Style="border-radius:8px;"
+                                                               Disabled="@(product.Stock == 0)"
+                                                               OnClick="@(async () => await AddToCart(product.Id))">
+                                            Add
+                                        </MudButton>
+                                    </div>
+                                </div>
+                            </MudStack>
+                        </div>
+
+                                </MudStack>
+                            </MudPaper>
+                        </div>
+                        }
+                </MudStack>
+
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private bool isLoading = true;
+    private bool isGridView = true;
+    private bool inStockOnly = false;
+    private string searchQuery = string.Empty;
+    private string userId = string.Empty;
+    private int selectedCategoryId = 0;
+    private decimal minPrice = 0;
+    private decimal maxPrice = 10000;
+    private decimal maxPossiblePrice = 10000;
+
+    private List<Product> allProducts = new();
+    private List<Category> categories = new();
+
+    private Dictionary<int, int> quantities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)
+                ?.Value ?? string.Empty;
+        }
+
+        await LoadData();
+    }
+    private async Task LoadData()
+    {
+        isLoading = true;
+
+        allProducts = await ProductService.GetAllAsync();
+
+        categories = await ProductService.GetCategoriesAsync();
+
+        if (allProducts.Any())
+        {
+            maxPossiblePrice = allProducts.Max(p => p.Price);
+            maxPrice = maxPossiblePrice;
+        }
+
+        isLoading = false;
+    }
+
+    private int GetQuantity(int productId) =>
+    quantities.TryGetValue(productId, out var q) ? q : 1;
+
+    private void IncrementQuantity(int productId, int maxStock)
+    {
+        if (!quantities.ContainsKey(productId))
+            quantities[productId] = 1;
+        if (quantities[productId] < maxStock)
+            quantities[productId]++;
+    }
+
+    private void DecrementQuantity(int productId)
+    {
+        if (!quantities.ContainsKey(productId))
+            quantities[productId] = 1;
+        if (quantities[productId] > 1)
+            quantities[productId]--;
+    }
+
+    private async Task AddToCart(int productId, int quantity = 1)
+    {
+        if (string.IsNullOrEmpty(userId)) return;
+        var (success, message) = await CartService
+            .AddToCartAsync(userId, productId, quantity);
+        if (success)
+        {
+            quantities[productId] = 1;
+            Snackbar.Add(message, Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+    }
+
+
+    private void GoToProduct(int id) =>
+        Navigation.NavigateTo($"/user/products/{id}");
+
+    private string GetCategoryStyle(int id) =>
+        selectedCategoryId == id
+            ? "background:rgba(108,99,255,0.1); border:1px solid #6C63FF;"
+            : "background:transparent; border:1px solid transparent;";
+
+    private string GetStockColor(int stock) => stock switch
+    {
+        0 => "color:#EF4444; font-weight:600;",
+        <= 5 => "color:#F59E0B; font-weight:600;",
+        _ => "color:#10B981; font-weight:600;"
+    };
+
+    private string GetStockLabel(int stock) => stock switch
+    {
+        0 => "Out of Stock",
+        <= 5 => $"Only {stock} left!",
+        _ => "In Stock"
+    };
+}

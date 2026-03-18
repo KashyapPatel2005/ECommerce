@@ -1,0 +1,124 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+@namespace ECommerce.Components.Pages.Authentication
+@layout MainLayout
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Login — ECommerce</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="min-height:100vh;">
+    <MudPaper Elevation="4" Class="pa-8 rounded-lg" Style="width:100%;">
+
+        <MudStack AlignItems="AlignItems.Center" Class="mb-6" >
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart"
+                     Color="Color.Primary" Style="font-size:3rem;" />
+            <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary">
+                <b>ECommerce</b>
+            </MudText>
+        </MudStack>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true">
+                @errorMessage
+            </MudAlert>
+        }
+
+        <form method="post" action="/account/login">
+            <AntiforgeryToken />
+
+            <div class="mb-4">
+                <label style="display:block; margin-bottom:4px; font-size:14px; color:#666;">
+                    Email Address
+                </label>
+                <input name="Email"
+                       type="email"
+                       value="@email"
+                       @oninput="e => email = e.Value?.ToString() ?? string.Empty"
+                       placeholder="Enter your email"
+                       required
+                       style="width:100%; padding:16px; border:1px solid #ccc;
+                              border-radius:4px; font-size:16px; box-sizing:border-box;
+                              outline:none;" />
+            </div>
+
+            <div class="mb-4">
+                <label style="display:block; margin-bottom:4px; font-size:14px; color:#666;">
+                    Password
+                </label>
+                <div style="position:relative;">
+                    <input name="Password"
+                           type="@(showPassword ? "text" : "password")"
+                           placeholder="Enter your password"
+                           required
+                           style="width:100%; padding:16px; padding-right:48px;
+                                  border:1px solid #ccc; border-radius:4px;
+                                  font-size:16px; box-sizing:border-box; outline:none;" />
+                    <button type="button"
+                            @onclick="TogglePassword"
+                            style="position:absolute; right:12px; top:50%;
+                                   transform:translateY(-50%); background:none;
+                                   border:none; cursor:pointer; color:#666;">
+                        <MudIcon Icon="@passwordIcon" />
+                    </button>
+                </div>
+            </div>
+
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Class="mb-4">
+                Sign In
+            </MudButton>
+        </form>
+
+        <MudDivider Class="mb-4" />
+
+        <MudStack AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2">
+                Don't have an account?
+                <MudLink Href="/register" Color="Color.Primary">
+                    <b>Create one</b>
+                </MudLink>
+            </MudText>
+        </MudStack>
+
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string email = string.Empty;
+    private string errorMessage = string.Empty;
+    private bool showPassword = false;
+
+    private string passwordIcon => showPassword
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private void TogglePassword() => showPassword = !showPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // If already logged in redirect to dashboard
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            if (user.IsInRole("Admin"))
+                Navigation.NavigateTo("/admin/dashboard", forceLoad: true);
+            else
+                Navigation.NavigateTo("/user/dashboard", forceLoad: true);
+        }
+
+        // Read error from query string
+        var uri = new Uri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers
+            .ParseQuery(uri.Query);
+        if (query.TryGetValue("error", out var error))
+            errorMessage = error.ToString();
+    }
+}

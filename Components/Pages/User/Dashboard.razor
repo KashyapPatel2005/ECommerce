@@ -1,0 +1,112 @@
+﻿@page "/user/dashboard"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IOrderService OrderService
+@inject ICartService CartService
+@inject IProductService ProductService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard — ECommerce</PageTitle>
+
+@if (isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center" Style="min-height:400px;">
+        <MudProgressCircular Color="Color.Primary"
+                             Indeterminate="true" Size="Size.Large" />
+        <MudText Color="Color.Secondary">Loading...</MudText>
+    </MudStack>
+}
+else
+{
+    <MudPaper Elevation="0" Class="pa-6 mb-6 rounded-lg"
+              Style="background:linear-gradient(135deg,#6C63FF,#9C8FFF);
+                         border:none;">
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Justify="Justify.SpaceBetween">
+            <div>
+                <MudText Typo="Typo.h4"
+                         Style="font-weight:800; color:white;">
+                    Welcome back, @userName! 
+                </MudText>
+            </div>
+            <MudButton Variant="Variant.Filled"
+                       Href="/user/products"
+                       Style="background:white; color:#6C63FF;
+                                  font-weight:700; border-radius:10px;"
+                       Class="d-none d-md-flex">
+                Shop Now
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+
+  
+
+   
+}
+
+@code {
+    private bool isLoading = true;
+    private string userName = "User";
+    private string userId = string.Empty;
+
+    private int totalOrders = 0;
+    private int pendingOrders = 0;
+    private decimal totalSpent = 0;
+
+    private List<Order> recentOrders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)
+                ?.Value ?? string.Empty;
+            var firstName = user.FindFirst(
+                System.Security.Claims.ClaimTypes.GivenName)
+                ?.Value ?? "";
+            userName = string.IsNullOrEmpty(firstName)
+                ? "User" : firstName;
+        }
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var orders = await OrderService.GetByUserAsync(userId);
+                totalOrders = orders.Count;
+                pendingOrders = orders.Count(o =>
+                    o.Status == OrderStatus.Pending ||
+                    o.Status == OrderStatus.Processing);
+                totalSpent = orders
+                    .Where(o => o.Status != OrderStatus.Cancelled)
+                    .Sum(o => o.TotalAmount);
+                recentOrders = orders.Take(5).ToList();
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Dashboard error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+}

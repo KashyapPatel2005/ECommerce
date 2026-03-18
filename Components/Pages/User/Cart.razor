@@ -1,0 +1,392 @@
+﻿@page "/user/cart"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject ICartService CartService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>My Cart — ECommerce</PageTitle>
+
+<style>
+    .cart-item {
+        transition: all 0.2s ease;
+    }
+    .cart-item:hover {
+        box-shadow: 0 4px 16px rgba(108,99,255,0.1) !important;
+    }
+    .qty-btn {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+    }
+</style>
+
+@if (isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center" Style="min-height:400px;">
+        <MudProgressCircular Color="Color.Primary"
+                             Indeterminate="true" Size="Size.Large" />
+        <MudText Color="Color.Secondary">Loading cart...</MudText>
+    </MudStack>
+}
+else
+{
+
+    @if (!cartItems.Any())
+    {
+        <MudPaper Elevation="0" Class="pa-12 rounded-lg"
+                  Style="border:1px solid var(--mud-palette-divider);
+                         text-align:center;">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCartCheckout"
+                     Style="font-size:6rem; color:#D1D5DB;" />
+            <MudText Typo="Typo.h5" Style="font-weight:700;"
+                     Class="mt-4">
+                Your cart is empty
+            </MudText>
+            <MudText Typo="Typo.body1" Color="Color.Secondary"
+                     Class="mb-6">
+                Looks like you haven't added anything yet
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Large"
+                       StartIcon="@Icons.Material.Filled.Store"
+                       Href="/user/products"
+                       Style="border-radius:12px; padding:12px 32px;">
+                Browse Products
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="4">
+            <MudItem xs="12" md="8">
+                <MudStack Spacing="3">
+                    @foreach (var item in cartItems)
+                    {
+                        <MudPaper Elevation="0" Class="cart-item rounded-lg"
+                                  Style="border:1px solid
+                                         var(--mud-palette-divider);
+                                         overflow:hidden;">
+                            <MudStack Row="true" AlignItems="AlignItems.Center">
+
+                                <div style="width:120px; min-width:120px;
+                                            height:120px; background:#F3F4F6;
+                                            display:flex; align-items:center;
+                                            justify-content:center;
+                                            overflow:hidden;">
+                                    @if (!string.IsNullOrEmpty(
+                                        item.Product.MainImageUrl))
+                                    {
+                                        <img src="@item.Product.MainImageUrl"
+                                             alt="@item.Product.Name"
+                                             style="width:100%; height:100%;
+                                                    object-fit:contain;" />
+                                    }
+                                    else
+                                    {
+                                        <MudIcon
+                                            Icon="@Icons.Material.Filled.Inventory2"
+                                            Style="font-size:3rem;
+                                                   color:#D1D5DB;" />
+                                    }
+                                </div>
+                                <div style="padding:16px; flex:1;">
+                                    <MudStack Row="true"
+                                              AlignItems="AlignItems.Center"
+                                              Justify="Justify.SpaceBetween">
+
+                                        <div style="flex:1;">
+                                            <MudText Typo="Typo.caption"
+                                                     Style="color:#6C63FF;
+                                                            font-weight:600;
+                                                            text-transform:uppercase;">
+                                                @item.Product.Category?.Name
+                                            </MudText>
+                                            <MudText Typo="Typo.h6"
+                                                     Style="font-weight:700;
+                                                            margin:2px 0;">
+                                                @item.Product.Name
+                                            </MudText>
+
+                                         
+                                            @if (item.Product.Stock <= 5
+                                                 && item.Product.Stock > 0)
+                                            {
+                                                <MudText Typo="Typo.caption"
+                                                         Style="color:#F59E0B;
+                                                                font-weight:600;">
+                                                    Only @item.Product.Stock left!
+                                                </MudText>
+                                            }
+                                        </div>
+
+                                        <MudStack AlignItems="AlignItems.End"
+                                                  Spacing="2">
+                                            <MudText Style="font-weight:800;
+                                                            font-size:1.2rem;
+                                                            color:#6C63FF;">
+                                                $@((item.Product.Price *
+                                                    item.Quantity)
+                                                    .ToString("N2"))
+                                            </MudText>
+                                            <MudStack Row="true"
+                                                      AlignItems="AlignItems.Center"
+                                                      Spacing="1">
+                                                <MudIconButton
+                                                    Icon="@Icons.Material.Filled.Remove"
+                                                    Size="Size.Small"
+                                                    Variant="Variant.Outlined"
+                                                    Color="Color.Primary"
+                                                    Class="qty-btn"
+                                                    Disabled="@(item.Quantity <= 1)"
+                                                    OnClick="@(async () =>
+                                                        await UpdateQuantity(
+                                                            item, item.Quantity - 1))" />
+
+                                                <MudPaper Elevation="0"
+                                                          Style="min-width:36px;
+                                                                 text-align:center;
+                                                                 padding:4px 8px;
+                                                                 border:1px solid
+                                                                 var(--mud-palette-divider);
+                                                                 border-radius:6px;">
+                                                    <MudText Style="font-weight:700;">
+                                                        @item.Quantity
+                                                    </MudText>
+                                                </MudPaper>
+
+                                                <MudIconButton
+                                                    Icon="@Icons.Material.Filled.Add"
+                                                    Size="Size.Small"
+                                                    Variant="Variant.Outlined"
+                                                    Color="Color.Primary"
+                                                    Class="qty-btn"
+                                                    Disabled="@(item.Quantity
+                                                                >= item.Product.Stock)"
+                                                    OnClick="@(async () =>
+                                                        await UpdateQuantity(
+                                                            item, item.Quantity + 1))" />
+                                            </MudStack>
+                                            <MudButton
+                                                Variant="Variant.Text"
+                                                Color="Color.Error"
+                                                Size="Size.Small"
+                                                StartIcon="@Icons.Material.Filled.Delete"
+                                                OnClick="@(async () =>
+                                                    await RemoveItem(item))">
+                                                Remove
+                                            </MudButton>
+
+                                        </MudStack>
+                                    </MudStack>
+                                </div>
+
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudPaper Elevation="0" Class="pa-5 rounded-lg"
+                          Style="border:1px solid var(--mud-palette-divider);
+                                 position:sticky; top:80px;">
+
+                    <MudText Typo="Typo.h6" Style="font-weight:700;"
+                             Class="mb-4">
+                        Order Summary
+                    </MudText>
+
+                    <MudStack Spacing="2" Class="mb-4">
+                        @foreach (var item in cartItems)
+                        {
+                            <MudStack Row="true"
+                                      Justify="Justify.SpaceBetween"
+                                      AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2"
+                                         Style="flex:1; overflow:hidden;
+                                                text-overflow:ellipsis;
+                                                white-space:nowrap;"
+                                         Color="Color.Secondary">
+                                    @item.Product.Name
+                                    <span style="color:#6C63FF;">
+                                        ×@item.Quantity
+                                    </span>
+                                </MudText>
+                                <MudText Typo="Typo.body2"
+                                         Style="font-weight:600;
+                                                min-width:70px;
+                                                text-align:right;">
+                                    $@((item.Product.Price * item.Quantity)
+                                        .ToString("N2"))
+                                </MudText>
+                            </MudStack>
+                        }
+
+                    </MudStack>
+
+                    <MudDivider Class="mb-3" />
+
+                    <MudStack Row="true" Justify="Justify.SpaceBetween"
+                              Class="mb-2">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Subtotal (@cartItems.Sum(i => i.Quantity) items)
+                        </MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight:600;">
+                            $@cartTotal.ToString("N2")
+                        </MudText>
+                    </MudStack>
+
+                    <MudStack Row="true" Justify="Justify.SpaceBetween"
+                              Class="mb-2">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Shipping
+                        </MudText>
+                        <MudText Typo="Typo.body2"
+                                 Style="@(shippingCost == 0
+                                          ? "font-weight:600; color:#10B981;"
+                                          : "font-weight:600;")">
+                            @(shippingCost == 0
+                              ? "FREE"
+                              : $"${shippingCost:N2}")
+                        </MudText>
+                    </MudStack>
+
+                    @if (cartTotal < freeShippingThreshold)
+                    {
+                        <MudPaper Elevation="0" Class="pa-2 mb-3 rounded-lg"
+                                  Style="background:rgba(16,185,129,0.08);
+                                         border:1px solid rgba(16,185,129,0.2);">
+                            <MudText Typo="Typo.caption"
+                                     Style="color:#10B981;">
+                                Add $@((freeShippingThreshold - cartTotal)
+                                    .ToString("N2")) more for FREE shipping!
+                            </MudText>
+                        </MudPaper>
+                    }
+
+                    <MudDivider Class="mb-3" />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween"
+                              Class="mb-6">
+                        <MudText Style="font-weight:800; font-size:1.1rem;">
+                            Total
+                        </MudText>
+                        <MudText Style="font-weight:800; font-size:1.3rem;
+                                        color:#6C63FF;">
+                            $@((cartTotal + shippingCost).ToString("N2"))
+                        </MudText>
+                    </MudStack>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Size="Size.Large"
+                               EndIcon="@Icons.Material.Filled.ArrowForward"
+                               Style="border-radius:12px; padding:14px;
+                                      font-weight:700; font-size:1rem;"
+                               Href="/user/checkout">
+                        Proceed to Checkout
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               FullWidth="true"
+                               Class="mt-2"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               Href="/user/products">
+                        Continue Shopping
+                    </MudButton>
+
+                </MudPaper>
+            </MudItem>
+
+        </MudGrid>
+    }
+}
+
+@code {
+    private bool isLoading = true;
+    private string userId = string.Empty;
+
+    private List<CartItem> cartItems = new();
+    private decimal cartTotal = 0;
+    private decimal shippingCost = 0;
+    private decimal freeShippingThreshold = 100;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)
+                ?.Value ?? string.Empty;
+        }
+
+        await LoadCart();
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        try
+        {
+            if (!string.IsNullOrEmpty(userId))
+            {
+                cartItems = await CartService.GetCartAsync(userId);
+                CalculateTotals();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Cart error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void CalculateTotals()
+    {
+        cartTotal    = cartItems.Sum(i => i.Product.Price * i.Quantity);
+        shippingCost = cartTotal >= freeShippingThreshold ? 0 : 10;
+    }
+
+    private async Task UpdateQuantity(CartItem item, int newQuantity)
+    {
+        var (success, message) = await CartService
+            .UpdateQuantityAsync(item.Id, newQuantity);
+        if (success)
+        {
+            await LoadCart();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+    }
+
+    private async Task RemoveItem(CartItem item)
+    {
+        var (success, message) = await CartService
+            .RemoveFromCartAsync(item.Id);
+        if (success)
+        {
+            Snackbar.Add("Item removed from cart.", Severity.Info);
+            await LoadCart();
+        }
+        else
+        {
+            Snackbar.Add(message, Severity.Error);
+        }
+    }
+
+
+}

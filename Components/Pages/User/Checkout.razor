@@ -1,0 +1,414 @@
+﻿@page "/user/checkout"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject ICartService CartService
+@inject IOrderService OrderService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IAddressService AddressService
+
+<PageTitle>Checkout — ECommerce</PageTitle>
+
+@if (isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height:300px;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </MudStack>
+}
+else if (orderPlaced)
+{
+    <MudPaper Elevation="0" Class="pa-12 rounded-lg"
+              Style="border:1px solid var(--mud-palette-divider); text-align:center;">
+        <div style="width:80px; height:80px; border-radius:50%;
+                        background:linear-gradient(135deg,#10B981,#34D399);
+                        display:flex; align-items:center;
+                        justify-content:center; margin:0 auto 16px;">
+            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Style="font-size:3rem; color:white;" />
+        </div>
+        <MudText Typo="Typo.h4" Style="font-weight:800;" Class="mb-2">Order Placed Successfully!</MudText>
+        <MudText Typo="Typo.h6" Style="color:#6C63FF; font-weight:700;" Class="mb-6">
+            Order #@placedOrderNumber
+        </MudText>
+        <MudStack Row="true" Justify="Justify.Center" Spacing="3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.ListAlt"
+                       Href="/user/orders" Style="border-radius:10px;">
+                View My Orders
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Store"
+                       Href="/user/products" Style="border-radius:10px;">
+                Continue Shopping
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+}
+else
+{
+    <MudGrid Spacing="4" Justify="Justify.Center" >  
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="0" Class="pa-6 rounded-lg"
+                      Style="border:1px solid var(--mud-palette-divider);">
+
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
+                    <MudAvatar Style="background:rgba(108,99,255,0.1); width:44px; height:44px;">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Style="color:#6C63FF;" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight:700;">Shipping Address</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Enter your delivery details</MudText>
+                    </div>
+                </MudStack>
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.FirstName" Label="First Name"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.LastName" Label="Last Name"
+                                      Variant="Variant.Outlined" FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.Email" Label="Email Address"
+                                      Variant="Variant.Outlined" InputType="InputType.Email"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.Phone" Label="Phone Number"
+                                      Variant="Variant.Outlined" InputType="InputType.Telephone"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Phone"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string" @bind-Value="address.AddressLine1" Label="Address Line 1"
+                                      Variant="Variant.Outlined" Placeholder="House no, Street name"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Home"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string" @bind-Value="address.AddressLine2"
+                                      Label="Address Line 2 (Optional)"
+                                      Variant="Variant.Outlined" Placeholder="Apartment, suite, etc."
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.City" Label="City"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.LocationCity"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.State" Label="State / Province"
+                                      Variant="Variant.Outlined" FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.ZipCode" Label="ZIP / Postal Code"
+                                      Variant="Variant.Outlined" FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string" @bind-Value="address.Country" Label="Country"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Flag"
+                                      FullWidth="true" />
+                    </MudItem>
+                </MudGrid>
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-4">@errorMessage</MudAlert>
+                }
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Size="Size.Large"
+                           Class="mt-6"
+                           Style="border-radius:12px; padding:14px; font-weight:700;"
+                           StartIcon="@Icons.Material.Filled.Payment"
+                           Disabled="@isPlacingOrder"
+                           OnClick="InitiatePayment">
+                    @if (isPlacingOrder)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                        <span>Processing...</span>
+                    }
+                    else
+                    {
+                        <span>Pay with Razorpay — ₹@((cartTotal + shippingCost).ToString("N2"))</span>
+                    }
+                </MudButton>
+
+                <MudButton Variant="Variant.Text" Color="Color.Primary" FullWidth="true"
+                           Class="mt-2" StartIcon="@Icons.Material.Filled.ArrowBack"
+                           Href="/user/cart">
+                    Back to Cart
+                </MudButton>
+
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool isPlacingOrder = false;
+    private bool orderPlaced = false;
+    private string userId = string.Empty;
+    private string placedOrderNumber = string.Empty;
+    private string errorMessage = string.Empty;
+
+    private List<CartItem> cartItems = new();
+    private decimal cartTotal = 0;
+    private decimal shippingCost = 0;
+    private decimal freeShippingThreshold = 100;
+    private const string RazorpayKeyId = "rzp_test_SSYQcVtqXky8MK";
+
+    private AddressForm address = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+            address.FirstName = user.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "";
+            address.LastName = user.FindFirst(System.Security.Claims.ClaimTypes.Surname)?.Value ?? "";
+            address.Email = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
+        }
+
+        await LoadCart();
+    }
+
+    private async Task LoadCart()
+    {
+        isLoading = true;
+        try
+        {
+            cartItems = await CartService.GetCartAsync(userId);
+            cartTotal = cartItems.Sum(i => i.Product.Price * i.Quantity);
+            shippingCost = cartTotal >= freeShippingThreshold ? 0 : 10;
+
+            if (!cartItems.Any())
+                Navigation.NavigateTo("/user/cart");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task InitiatePayment()
+    {
+        errorMessage = string.Empty;
+
+        if (!ValidateAddress())
+            return;
+
+        isPlacingOrder = true;
+        try
+        {
+            var newAddress = new Address
+            {
+                UserId = userId,
+                FirstName = address.FirstName,
+                LastName = address.LastName,
+                Email = address.Email,
+                Phone = address.Phone,
+                AddressLine1 = address.AddressLine1,
+                AddressLine2 = address.AddressLine2,
+                City = address.City,
+                State = address.State,
+                ZipCode = address.ZipCode,
+                Country = address.Country
+            };
+
+            var savedAddress = await AddressService.SaveAddressAsync(newAddress);
+            var shippingAddress =
+                $"{address.AddressLine1}" +
+                $"{(string.IsNullOrEmpty(address.AddressLine2) ? "" : $", {address.AddressLine2}")}" +
+                $", {address.City}, {address.State} {address.ZipCode}, {address.Country}";
+
+            var order = new Order
+            {
+                UserId = userId,
+                OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                OrderDate = DateTime.UtcNow,
+                Status = OrderStatus.Pending,
+                PaymentStatus = PaymentStatus.Unpaid,  
+                PaymentMethod = "Razorpay",
+                AddressId = savedAddress?.Id,
+                ShippingAddress = shippingAddress,
+                ShippingCost = shippingCost,
+                SubTotal = cartTotal,
+                Discount = 0,
+                TotalAmount = cartTotal + shippingCost,
+                OrderItems = cartItems.Select(i => new OrderItem
+                {
+                    ProductId = i.ProductId,
+                    Quantity = i.Quantity,
+                    UnitPrice = i.Product.Price,
+                    TotalPrice = i.Product.Price * i.Quantity
+                }).ToList()
+            };
+
+            var (success, message) = await OrderService.CreateAsync(order);
+
+            if (!success)
+            {
+                errorMessage = $"Failed to save order: {message}";
+                return;
+            }
+
+            await CartService.ClearCartAsync(userId);
+            var totalInPaise = (int)((cartTotal + shippingCost) * 100);
+
+            var options = new
+            {
+                key = RazorpayKeyId,
+                amount = totalInPaise,
+                currency = "INR",
+                name = "ECommerce Store",
+                description = $"Payment for {order.OrderNumber}",
+                prefill = new
+                {
+                    name = $"{address.FirstName} {address.LastName}",
+                    email = address.Email,
+                    contact = address.Phone
+                },
+                theme = new { color = "#6C63FF" }
+            };
+
+            var result = await JS.InvokeAsync<RazorpayResult>("initRazorpay", options);
+            placedOrderNumber = order.OrderNumber;
+            orderPlaced = true;
+
+            if (result.Success)
+                Snackbar.Add("Payment successful! Order confirmed.", Severity.Success);
+            else
+                Snackbar.Add("Order saved! Complete payment later from My Orders.", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Something went wrong: {ex.Message}";
+        }
+        finally
+        {
+            isPlacingOrder = false;
+        }
+    }
+
+    private async Task PlaceOrder(string razorpayPaymentId)
+    {
+        var newAddress = new Address
+        {
+            UserId = userId,
+            FirstName = address.FirstName,
+            LastName = address.LastName,
+            Email = address.Email,
+            Phone = address.Phone,
+            AddressLine1 = address.AddressLine1,
+            AddressLine2 = address.AddressLine2,
+            City = address.City,
+            State = address.State,
+            ZipCode = address.ZipCode,
+            Country = address.Country
+        };
+
+        var savedAddress = await AddressService.SaveAddressAsync(newAddress);
+        var shippingAddress =
+            $"{address.AddressLine1}" +
+            $"{(string.IsNullOrEmpty(address.AddressLine2) ? "" : $", {address.AddressLine2}")}" +
+            $", {address.City}, {address.State} {address.ZipCode}, {address.Country}";
+
+        var order = new Order
+        {
+            UserId = userId,
+            OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmss}",
+            OrderDate = DateTime.UtcNow,
+            Status = OrderStatus.Pending,
+            PaymentStatus = PaymentStatus.Paid,
+            PaymentMethod = "Razorpay",
+            TransactionId = razorpayPaymentId,
+            AddressId = savedAddress?.Id,        
+            ShippingAddress = shippingAddress,           
+            ShippingCost = shippingCost,
+            SubTotal = cartTotal,
+            Discount = 0,
+            TotalAmount = cartTotal + shippingCost,
+            OrderItems = cartItems.Select(i => new OrderItem
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                UnitPrice = i.Product.Price,
+                TotalPrice = i.Product.Price * i.Quantity
+            }).ToList()
+        };
+
+        var (success, message) = await OrderService.CreateAsync(order);
+
+        if (success)
+        {
+            await CartService.ClearCartAsync(userId);
+            placedOrderNumber = order.OrderNumber;
+            orderPlaced = true;
+            Snackbar.Add("Order placed successfully!", Severity.Success);
+        }
+        else
+        {
+            errorMessage = $"Payment received (ID: {razorpayPaymentId}) but order save failed: {message}. Please contact support.";
+        }
+    }
+
+    private bool ValidateAddress()
+    {
+        if (string.IsNullOrWhiteSpace(address.FirstName) ||
+            string.IsNullOrWhiteSpace(address.LastName) ||
+            string.IsNullOrWhiteSpace(address.Email) ||
+            string.IsNullOrWhiteSpace(address.Phone) ||
+            string.IsNullOrWhiteSpace(address.AddressLine1) ||
+            string.IsNullOrWhiteSpace(address.City) ||
+            string.IsNullOrWhiteSpace(address.State) ||
+            string.IsNullOrWhiteSpace(address.ZipCode) ||
+            string.IsNullOrWhiteSpace(address.Country))
+        {
+            errorMessage = "Please fill in all required fields.";
+            return false;
+        }
+        return true;
+    }
+    private class RazorpayResult
+    {
+        public bool Success { get; set; }
+        public string PaymentId { get; set; } = string.Empty;
+        public string OrderId { get; set; } = string.Empty;
+        public string Signature { get; set; } = string.Empty;
+    }
+    private class AddressForm
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+        public string AddressLine1 { get; set; } = string.Empty;
+        public string AddressLine2 { get; set; } = string.Empty;
+        public string City { get; set; } = string.Empty;
+        public string State { get; set; } = string.Empty;
+        public string ZipCode { get; set; } = string.Empty;
+        public string Country  { get; set; } = string.Empty;
+    }
+}

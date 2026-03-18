@@ -1,0 +1,214 @@
+﻿@page "/register"
+@rendermode InteractiveServer
+@namespace ECommerce.Components.Pages.Authentication
+@using ECommerce.DTOs
+@layout MainLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Register — ECommerce</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center justify-center" Style="min-height:100vh;">
+    <MudPaper Elevation="4" Class="pa-8 rounded-lg my-8" Style="width:100%;">
+
+        <MudStack AlignItems="AlignItems.Center" Class="mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.ShoppingCart"
+                     Color="Color.Primary" Style="font-size:3rem;" />
+            <MudText Typo="Typo.h4" Align="Align.Center" Color="Color.Primary">
+                <b>ECommerce</b>
+            </MudText>
+        </MudStack>
+
+        <MudForm @ref="form" @bind-IsValid="@isValid">
+
+            <MudGrid Class="mb-2">
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="registerDto.FirstName"
+                                  Label="First Name"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Person"
+                                  FullWidth="true"
+                                  Required="true"
+                                  RequiredError="First name is required" />
+                </MudItem>
+                <MudItem xs="6">
+                    <MudTextField @bind-Value="registerDto.LastName"
+                                  Label="Last Name"
+                                  Variant="Variant.Outlined"
+                                  FullWidth="true"
+                                  Required="true"
+                                  RequiredError="Last name is required" />
+                </MudItem>
+            </MudGrid>
+
+            <MudTextField @bind-Value="registerDto.Email"
+                          Label="Email Address"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Email"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Email"
+                          Class="mb-4"
+                          FullWidth="true"
+                          Required="true"
+                          RequiredError="Email is required"
+                          Validation="@(new EmailAddressAttribute() { ErrorMessage = "Invalid email format" })" />
+
+            <MudTextField @bind-Value="registerDto.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="@passwordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@passwordIcon"
+                          OnAdornmentClick="TogglePassword"
+                          Class="mb-4"
+                          FullWidth="true"
+                          Required="true"
+                          RequiredError="Password is required"
+                          Validation="@(new Func<string, string?>(ValidatePassword))" />
+
+            <MudTextField @bind-Value="registerDto.ConfirmPassword"
+                          Label="Confirm Password"
+                          Variant="Variant.Outlined"
+                          InputType="@confirmPasswordInputType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@confirmPasswordIcon"
+                          OnAdornmentClick="ToggleConfirmPassword"
+                          Class="mb-4"
+                          FullWidth="true"
+                          Required="true"
+                          RequiredError="Please confirm your password"
+                          Validation="@(new Func<string, string?>(ValidateConfirmPassword))" />
+
+            <MudSelect @bind-Value="registerDto.Role"
+                       Label="Register As"
+                       Variant="Variant.Outlined"
+                       Adornment="Adornment.Start"
+                       AdornmentIcon="@Icons.Material.Filled.AdminPanelSettings"
+                       Class="mb-4"
+                       FullWidth="true">
+                <MudSelectItem Value="@("User")">Customer</MudSelectItem>
+                <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+            </MudSelect>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    @errorMessage
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4">
+                    @successMessage
+                </MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@isLoading"
+                       OnClick="HandleRegister"
+                       Class="mb-4">
+                @if (isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Create Account</span>
+                }
+            </MudButton>
+
+        </MudForm>
+
+        <MudDivider Class="mb-4" />
+
+        <MudStack AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2">
+                Already have an account?
+                <MudLink Href="/login" Color="Color.Primary">
+                    <b>Sign in</b>
+                </MudLink>
+            </MudText>
+        </MudStack>
+
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private RegisterDto registerDto = new RegisterDto();
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+    private bool isLoading = false;
+    private bool isValid = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+    private MudForm form = default!;
+
+    private InputType passwordInputType => showPassword ? InputType.Text : InputType.Password;
+    private string passwordIcon => showPassword
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private InputType confirmPasswordInputType => showConfirmPassword ? InputType.Text : InputType.Password;
+    private string confirmPasswordIcon => showConfirmPassword
+        ? Icons.Material.Filled.VisibilityOff
+        : Icons.Material.Filled.Visibility;
+
+    private void TogglePassword() => showPassword = !showPassword;
+    private void ToggleConfirmPassword() => showConfirmPassword = !showConfirmPassword;
+
+    private string? ValidatePassword(string password)
+    {
+        if (string.IsNullOrEmpty(password)) return "Password is required";
+        if (password.Length < 6) return "Minimum 6 characters";
+        return null;
+    }
+
+    private string? ValidateConfirmPassword(string confirmPassword)
+    {
+        if (string.IsNullOrEmpty(confirmPassword)) return "Please confirm your password";
+        if (confirmPassword != registerDto.Password) return "Passwords do not match";
+        return null;
+    }
+
+    private async Task HandleRegister()
+    {
+        await form.Validate();
+        if (!isValid) return;
+
+        isLoading = true;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        try
+        {
+            var (success, message) = await AuthService.RegisterAsync(registerDto);
+
+            if (success)
+            {
+                successMessage = message;
+                Snackbar.Add("Account created successfully!", Severity.Success);
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/login");
+            }
+            else
+            {
+                errorMessage = message;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

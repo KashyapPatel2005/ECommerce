@@ -1,0 +1,17 @@
+﻿@page "/admin/dashboard"
+@rendermode InteractiveServer
+@layout AdminLayout
+@attribute [Authorize(Roles = "Admin")]
+
+
+<PageTitle>Admin Dashboard — ECommerce</PageTitle>
+
+
+@code {
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+
+}
