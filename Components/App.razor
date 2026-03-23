@@ -42,11 +42,11 @@
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="ECommerce.styles.css" />
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <HeadOutlet />
 </head>
 <body>
-    <Routes />
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <Routes @rendermode="InteractiveServer" />
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="/js/razorpay.js"></script> 

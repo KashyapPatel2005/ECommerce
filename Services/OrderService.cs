@@ -7,17 +7,17 @@ namespace ECommerce.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public OrderService(ApplicationDbContext context)
+        public OrderService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<List<Order>> GetAllAsync()
         {
-          
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
@@ -27,8 +27,8 @@ namespace ECommerce.Services
 
         public async Task<List<Order>> GetByUserAsync(string userId)
         {
-         
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
                 .Where(o => o.UserId == userId)
@@ -38,8 +38,8 @@ namespace ECommerce.Services
 
         public async Task<Order?> GetByIdAsync(int id)
         {
-           
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                     .ThenInclude(oi => oi.Product)
@@ -48,39 +48,38 @@ namespace ECommerce.Services
 
         public async Task<int> GetTotalOrdersCountAsync()
         {
-         
-            return await _context.Orders.CountAsync();
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders.CountAsync();
         }
 
         public async Task<int> GetPendingOrdersCountAsync()
         {
-           
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .CountAsync(o => o.Status == OrderStatus.Pending);
         }
 
         public async Task<decimal> GetTotalRevenueAsync()
         {
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .Where(o => o.Status != OrderStatus.Cancelled)
                 .SumAsync(o => o.TotalAmount);
         }
 
         public async Task<decimal> GetMonthlyRevenueAsync()
         {
-            var start = new DateTime(
-                DateTime.Now.Year,
-                DateTime.Now.Month, 1);
-            return await _context.Orders
-                .Where(o => o.OrderDate >= start
-                         && o.Status != OrderStatus.Cancelled)
+            await using var context = await _factory.CreateDbContextAsync();
+            var start = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            return await context.Orders
+                .Where(o => o.OrderDate >= start && o.Status != OrderStatus.Cancelled)
                 .SumAsync(o => o.TotalAmount);
         }
 
         public async Task<List<Order>> GetRecentAsync(int count)
         {
- 
-            return await _context.Orders
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.User)
                 .Include(o => o.OrderItems)
                 .OrderByDescending(o => o.OrderDate)
@@ -88,13 +87,12 @@ namespace ECommerce.Services
                 .ToListAsync();
         }
 
-        public async Task<Dictionary<string, decimal>>
-            GetMonthlyRevenueChartAsync()
+        public async Task<Dictionary<string, decimal>> GetMonthlyRevenueChartAsync()
         {
+            await using var context = await _factory.CreateDbContextAsync();
             var sixMonthsAgo = DateTime.Now.AddMonths(-6);
-            var orders = await _context.Orders
-                .Where(o => o.OrderDate >= sixMonthsAgo
-                         && o.Status != OrderStatus.Cancelled)
+            var orders = await context.Orders
+                .Where(o => o.OrderDate >= sixMonthsAgo && o.Status != OrderStatus.Cancelled)
                 .ToListAsync();
 
             return orders
@@ -104,13 +102,13 @@ namespace ECommerce.Services
                     g => g.Sum(o => o.TotalAmount));
         }
 
-        public async Task<(bool Success, string Message)> CreateAsync(
-            Order order)
+        public async Task<(bool Success, string Message)> CreateAsync(Order order)
         {
             try
             {
-                _context.Orders.Add(order);
-                await _context.SaveChangesAsync();
+                await using var context = await _factory.CreateDbContextAsync();
+                context.Orders.Add(order);
+                await context.SaveChangesAsync();
                 return (true, "Order placed successfully.");
             }
             catch (Exception ex)
@@ -119,18 +117,17 @@ namespace ECommerce.Services
             }
         }
 
-        public async Task<(bool Success, string Message)> UpdateStatusAsync(
-            int orderId, OrderStatus status)
+        public async Task<(bool Success, string Message)> UpdateStatusAsync(int orderId, OrderStatus status)
         {
             try
             {
-             
-                var order = await _context.Orders.FindAsync(orderId);
+                await using var context = await _factory.CreateDbContextAsync();
+                var order = await context.Orders.FindAsync(orderId);
                 if (order == null)
                     return (false, "Order not found.");
 
                 order.Status = status;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return (true, "Order status updated.");
             }
             catch (Exception ex)

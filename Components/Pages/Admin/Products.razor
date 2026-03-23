@@ -9,19 +9,6 @@
 <PageTitle>Products — ECommerce Admin</PageTitle>
 
 
-<MudStack Row="true" AlignItems="AlignItems.Center"
-          Justify="Justify.SpaceBetween" Class="mb-6">
-    <div>
-        <MudText Typo="Typo.h4" Style="font-weight:700;" Class="ml-4">Products</MudText>
-    </div>
-    @* <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="OpenAddDialog">
-        Add Product
-    </MudButton> *@
-</MudStack>
-
 <MudPaper Elevation="0" Class="pa-6 ml-3 mb-4 rounded-lg"
           Style="border:1px solid var(--mud-palette-divider);">
     <MudGrid>
@@ -47,17 +34,6 @@
                 }
             </MudSelect>
         </MudItem>
-        @* <MudItem xs="12" md="2">
-            <MudSelect @bind-Value="stockFilter"
-                       Label="Stock Status"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       FullWidth="true">
-                <MudSelectItem Value="@("all")">All Stock</MudSelectItem>
-                <MudSelectItem Value="@("low")">Low Stock</MudSelectItem>
-                <MudSelectItem Value="@("out")">Out of Stock</MudSelectItem>
-            </MudSelect>
-        </MudItem> *@
         <MudItem xs="12" md="1">
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
@@ -77,16 +53,6 @@
                 Add Product
         </MudButton>
         </MudItem>
-        @* <MudItem xs="12" md="2">
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Secondary"
-                       FullWidth="true"
-                       Style="height:40px;"
-                       StartIcon="@Icons.Material.Filled.Clear"
-                       OnClick="ClearFilters">
-                Clear
-            </MudButton>
-        </MudItem> *@
     </MudGrid>
 </MudPaper>
 
@@ -282,16 +248,6 @@
                                   AdornmentIcon="@Icons.Material.Filled.Image"
                                   FullWidth="true" />
                 </MudItem>
-                @* <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="productModel.IsActive"
-                               Label="Active"
-                               Color="Color.Primary" />
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="productModel.IsFeatured"
-                               Label="Featured Product"
-                               Color="Color.Warning" />
-                </MudItem> *@
             </MudGrid>
         </MudForm>
     </DialogContent>
@@ -398,28 +354,11 @@
             filteredProducts = filteredProducts
                 .Where(p => p.CategoryId == selectedCategoryId)
                 .ToList();
-
-        // filteredProducts = stockFilter switch
-        // {
-        //     "low" => filteredProducts
-        //                 .Where(p => p.Stock > 0 && p.Stock <= 10).ToList(),
-        //     "out" => filteredProducts
-        //                 .Where(p => p.Stock == 0).ToList(),
-        //     _     => filteredProducts
-        // };
     }
 
     private void OnSearch(ChangeEventArgs e)
     {
         searchQuery = e.Value?.ToString() ?? string.Empty;
-        ApplyFilters();
-    }
-
-    private void ClearFilters()
-    {
-        searchQuery = string.Empty;
-        selectedCategoryId = 0;
-        stockFilter = "all";
         ApplyFilters();
     }
 
@@ -486,23 +425,6 @@
         showDeleteConfirm = true;
     }
 
-    // private async Task ConfirmDeleteProduct()
-    // {
-    //     if (productToDelete == null) return;
-    //     var (success, message) = await ProductService.DeleteAsync(productToDelete.Id);
-    //     if (success)
-    //     {
-    //         Snackbar.Add(message, Severity.Success);
-    //         await LoadData();
-    //     }
-    //     else
-    //     {
-    //         Snackbar.Add(message, Severity.Error);
-    //     }
-    //     productToDelete = null;
-    //     showDeleteConfirm = false;
-    // }
-
     private async Task ConfirmDeleteProduct()
 {
     if (productToDelete == null) return;
@@ -514,8 +436,8 @@
         Snackbar.Add(message, Severity.Success);
         productToDelete = null;
         showDeleteConfirm = false;
-        await LoadData();        // ← Reload from DB
-        StateHasChanged();       // ← Force UI update
+        await LoadData();      
+        StateHasChanged();       
     }
     else
     {

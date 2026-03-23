@@ -7,23 +7,23 @@ namespace ECommerce.Services
 {
     public class ProductService : IProductService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public ProductService(ApplicationDbContext context)
+        public ProductService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<List<Product>> GetAllAsync()
         {
-         
-            return await _context.Products.ToListAsync();
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products.ToListAsync();
         }
 
         public async Task<Product?> GetByIdAsync(int id)
         {
-        
-            return await _context.Products
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Include(p => p.Reviews)
@@ -32,8 +32,8 @@ namespace ECommerce.Services
 
         public async Task<List<Product>> GetByCategoryAsync(int categoryId)
         {
-          
-            return await _context.Products
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products
                 .Include(p => p.Category)
                 .Include(p => p.Images)
                 .Where(p => p.CategoryId == categoryId && p.IsActive)
@@ -42,8 +42,8 @@ namespace ECommerce.Services
 
         public async Task<List<Product>> SearchAsync(string query)
         {
-          
-            return await _context.Products
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products
                 .Include(p => p.Category)
                 .Where(p => p.Name.Contains(query) ||
                             (p.Description != null &&
@@ -53,31 +53,29 @@ namespace ECommerce.Services
 
         public async Task<List<Product>> GetLowStockAsync(int threshold = 10)
         {
-    
-            return await _context.Products
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products
                 .Include(p => p.Category)
                 .Where(p => p.Stock <= threshold)
                 .OrderBy(p => p.Stock)
                 .ToListAsync();
         }
 
-
-
         public async Task<int> GetTotalCountAsync()
         {
-          
-            return await _context.Products.CountAsync();
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Products.CountAsync();
         }
 
         public async Task<(bool Success, string Message)> CreateAsync(Product product)
         {
-           
             try
             {
+                await using var context = await _factory.CreateDbContextAsync();
                 product.CreatedAt = DateTime.UtcNow;
                 product.UpdatedAt = DateTime.UtcNow;
-                _context.Products.Add(product);
-                await _context.SaveChangesAsync();
+                context.Products.Add(product);
+                await context.SaveChangesAsync();
                 return (true, "Product created successfully.");
             }
             catch (Exception ex)
@@ -88,10 +86,10 @@ namespace ECommerce.Services
 
         public async Task<(bool Success, string Message)> UpdateAsync(Product product)
         {
-     
             try
             {
-                var existing = await _context.Products.FindAsync(product.Id);
+                await using var context = await _factory.CreateDbContextAsync();
+                var existing = await context.Products.FindAsync(product.Id);
                 if (existing == null)
                     return (false, "Product not found.");
 
@@ -104,7 +102,7 @@ namespace ECommerce.Services
                 existing.MainImageUrl = product.MainImageUrl;
                 existing.UpdatedAt = DateTime.UtcNow;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return (true, "Product updated successfully.");
             }
             catch (Exception ex)
@@ -115,15 +113,15 @@ namespace ECommerce.Services
 
         public async Task<(bool Success, string Message)> DeleteAsync(int id)
         {
-           
             try
             {
-                var product = await _context.Products.FindAsync(id);
+                await using var context = await _factory.CreateDbContextAsync();
+                var product = await context.Products.FindAsync(id);
                 if (product == null)
                     return (false, "Product not found.");
 
-                _context.Products.Remove(product); // ← Hard delete
-                await _context.SaveChangesAsync();
+                context.Products.Remove(product);
+                await context.SaveChangesAsync();
                 return (true, "Product deleted successfully.");
             }
             catch (Exception ex)
@@ -134,12 +132,11 @@ namespace ECommerce.Services
 
         public async Task<List<Category>> GetCategoriesAsync()
         {
-         
-            return await _context.Categories
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Categories
                 .Where(c => c.IsActive)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
         }
     }
 }
-

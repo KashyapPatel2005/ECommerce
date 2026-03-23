@@ -7,16 +7,17 @@ namespace ECommerce.Services
 {
     public class CartService : ICartService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public CartService(ApplicationDbContext context)
+        public CartService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<List<CartItem>> GetCartAsync(string userId)
         {
-            return await _context.CartItems
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.CartItems
                 .Include(c => c.Product)
                     .ThenInclude(p => p.Category)
                 .Where(c => c.UserId == userId)
@@ -26,40 +27,43 @@ namespace ECommerce.Services
 
         public async Task<int> GetCartCountAsync(string userId)
         {
-            return await _context.CartItems
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.CartItems
                 .Where(c => c.UserId == userId)
                 .SumAsync(c => c.Quantity);
         }
 
         public async Task<decimal> GetCartTotalAsync(string userId)
         {
-            return await _context.CartItems
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.CartItems
                 .Include(c => c.Product)
                 .Where(c => c.UserId == userId)
                 .SumAsync(c => c.Product.Price * c.Quantity);
         }
 
-
-        public async Task<(bool Success,string Message)> AddToCartAsync(string userId,int productId,int quantity=1)
+        public async Task<(bool Success, string Message)> AddToCartAsync(string userId, int productId, int quantity = 1)
         {
             try
             {
-                var product = await _context.Products.FindAsync(productId);
+                await using var context = await _factory.CreateDbContextAsync();
+
+                var product = await context.Products.FindAsync(productId);
 
                 if (product == null)
                     return (false, "Product not found");
                 if (product.Stock < quantity)
                     return (false, "Insufficient Stock");
 
-                var existing = await _context.CartItems.FirstOrDefaultAsync(c => c.UserId == userId && c.ProductId == productId);
+                var existing = await context.CartItems.FirstOrDefaultAsync(c => c.UserId == userId && c.ProductId == productId);
 
-                if(existing != null)
+                if (existing != null)
                 {
                     existing.Quantity += quantity;
                 }
                 else
                 {
-                    _context.CartItems.Add(new CartItem
+                    context.CartItems.Add(new CartItem
                     {
                         UserId = userId,
                         ProductId = productId,
@@ -68,34 +72,34 @@ namespace ECommerce.Services
                     });
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return (true, "Added to cart successfully");
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 return (false, $"Error adding to cart: {ex.Message}");
             }
-
         }
 
-        public async Task<(bool Success, string Message)> UpdateQuantityAsync(
-            int cartItemId, int quantity)
+        public async Task<(bool Success, string Message)> UpdateQuantityAsync(int cartItemId, int quantity)
         {
             try
             {
-                var item = await _context.CartItems.FindAsync(cartItemId);
+                await using var context = await _factory.CreateDbContextAsync();
+                var item = await context.CartItems.FindAsync(cartItemId);
                 if (item == null)
                     return (false, "Cart item not found.");
 
                 if (quantity <= 0)
                 {
-                    _context.CartItems.Remove(item);
+                    context.CartItems.Remove(item);
                 }
                 else
                 {
                     item.Quantity = quantity;
                 }
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return (true, "Cart updated.");
             }
             catch (Exception ex)
@@ -104,17 +108,17 @@ namespace ECommerce.Services
             }
         }
 
-        public async Task<(bool Success, string Message)> RemoveFromCartAsync(
-            int cartItemId)
+        public async Task<(bool Success, string Message)> RemoveFromCartAsync(int cartItemId)
         {
             try
             {
-                var item = await _context.CartItems.FindAsync(cartItemId);
+                await using var context = await _factory.CreateDbContextAsync();
+                var item = await context.CartItems.FindAsync(cartItemId);
                 if (item == null)
                     return (false, "Cart item not found.");
 
-                _context.CartItems.Remove(item);
-                await _context.SaveChangesAsync();
+                context.CartItems.Remove(item);
+                await context.SaveChangesAsync();
                 return (true, "Removed from cart.");
             }
             catch (Exception ex)
@@ -123,17 +127,17 @@ namespace ECommerce.Services
             }
         }
 
-        public async Task<(bool Success, string Message)> ClearCartAsync(
-            string userId)
+        public async Task<(bool Success, string Message)> ClearCartAsync(string userId)
         {
             try
             {
-                var items = await _context.CartItems
+                await using var context = await _factory.CreateDbContextAsync();
+                var items = await context.CartItems
                     .Where(c => c.UserId == userId)
                     .ToListAsync();
 
-                _context.CartItems.RemoveRange(items);
-                await _context.SaveChangesAsync();
+                context.CartItems.RemoveRange(items);
+                await context.SaveChangesAsync();
                 return (true, "Cart cleared.");
             }
             catch (Exception ex)

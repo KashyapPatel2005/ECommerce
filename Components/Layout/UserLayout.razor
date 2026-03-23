@@ -1,11 +1,12 @@
 ﻿@namespace ECommerce.Components.Layout
 @inherits LayoutComponentBase
-@inject NavigationManager Navigation
 @inject AuthService AuthService
 @inject ICartService CartService
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDialogService DialogService
 @inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
 
 <MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
 <MudDialogProvider @rendermode="InteractiveServer" />
@@ -66,12 +67,18 @@
                 </MudBadge>
             </MudTooltip>
 
-            <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
+            @* <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
                 <a href="/account/logout" style="text-decoration:none;"> 
                     <MudIconButton Icon="@Icons.Material.Filled.Logout"
                                    Style="color:#EF4444;"
                                    OnClick="OpenLogoutDialog" />
                 </a> 
+            </MudTooltip> *@
+
+            <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
+                <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                               Style="color:#EF4444;"
+                               OnClick="@OpenLogoutDialog" />
             </MudTooltip>
 
             <MudMenu AnchorOrigin="Origin.BottomRight"
@@ -198,6 +205,4 @@
             Navigation.NavigateTo("/account/logout", forceLoad: true);
         }
     }
-
-
 }

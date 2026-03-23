@@ -30,10 +30,8 @@ namespace ECommerce.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        // Foreign Key
         public int CategoryId { get; set; }
 
-        // Navigation
         public Category Category { get; set; } = default!;
         public ICollection<ProductImage> Images { get; set; } = new List<ProductImage>();
         public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

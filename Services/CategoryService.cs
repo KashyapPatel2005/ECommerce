@@ -7,16 +7,17 @@ namespace ECommerce.Services
 {
     public class CategoryService : ICategoryService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public CategoryService(ApplicationDbContext context)
+        public CategoryService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<List<Category>> GetAllAsync()
         {
-            return await _context.Categories
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Categories
                 .Include(c => c.Products)
                 .OrderBy(c => c.Name)
                 .ToListAsync();
@@ -24,14 +25,16 @@ namespace ECommerce.Services
 
         public async Task<Category?> GetByIdAsync(int id)
         {
-            return await _context.Categories
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Categories
                 .Include(c => c.Products)
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
         public async Task<bool> ExistsAsync(string name)
         {
-            return await _context.Categories
+            await using var context = await _factory.CreateDbContextAsync();
+            return await context.Categories
                 .AnyAsync(c => c.Name.ToLower() == name.ToLower());
         }
 
@@ -42,9 +45,10 @@ namespace ECommerce.Services
                 if (await ExistsAsync(category.Name))
                     return (false, "Category with this name already exists.");
 
+                await using var context = await _factory.CreateDbContextAsync();
                 category.CreatedAt = DateTime.UtcNow;
-                _context.Categories.Add(category);
-                await _context.SaveChangesAsync();
+                context.Categories.Add(category);
+                await context.SaveChangesAsync();
                 return (true, "Category created successfully.");
             }
             catch (Exception ex)
@@ -57,7 +61,8 @@ namespace ECommerce.Services
         {
             try
             {
-                var existing = await _context.Categories.FindAsync(category.Id);
+                await using var context = await _factory.CreateDbContextAsync();
+                var existing = await context.Categories.FindAsync(category.Id);
                 if (existing == null)
                     return (false, "Category not found.");
 
@@ -66,7 +71,7 @@ namespace ECommerce.Services
                 existing.ImageUrl = category.ImageUrl;
                 existing.IsActive = category.IsActive;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 return (true, "Category updated successfully.");
             }
             catch (Exception ex)
@@ -79,7 +84,8 @@ namespace ECommerce.Services
         {
             try
             {
-                var category = await _context.Categories
+                await using var context = await _factory.CreateDbContextAsync();
+                var category = await context.Categories
                     .Include(c => c.Products)
                     .FirstOrDefaultAsync(c => c.Id == id);
 
@@ -89,8 +95,8 @@ namespace ECommerce.Services
                 if (category.Products.Any())
                     return (false, "Cannot delete category with existing products.");
 
-                _context.Categories.Remove(category);
-                await _context.SaveChangesAsync();
+                context.Categories.Remove(category);
+                await context.SaveChangesAsync();
                 return (true, "Category deleted successfully.");
             }
             catch (Exception ex)

@@ -1,9 +1,10 @@
 ﻿@namespace ECommerce.Components.Layout
 @inherits LayoutComponentBase
-@inject NavigationManager Navigation
 @inject AuthService AuthService
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
 
-<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
+<MudThemeProvider Theme="_theme" @rendermode="InteractiveServer" />
 <MudDialogProvider @rendermode="InteractiveServer" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
 <MudPopoverProvider @rendermode="InteractiveServer" />
@@ -97,72 +98,20 @@
 
         <MudDivider />
 
-        @* <MudNavMenu Class="pa-2">
-            <MudNavLink Icon="@Icons.Material.Filled.Logout"
-                        Style="color:#EF4444; margin:8px 0;"
-                        OnClick="HandleLogout">
-                Logout
-            </MudNavLink>
-        </MudNavMenu> *@
-
-        <div style="padding:12px;">
-            <a href="/account/logout"
-               style="display:flex; align-items:center; gap:8px;
-              color:#EF4444; text-decoration:none;
-              padding:10px 16px; border-radius:10px;
-              font-weight:600; font-size:14px;
-              border:1px solid rgba(239,68,68,0.3);
-              transition:background 0.2s ease;"
-               onmouseover="this.style.background='rgba(239,68,68,0.05)'"
-               onmouseout="this.style.background='transparent'">
-                <span class="mud-icon-root mud-svg-icon"
-                      style="font-size:1.2rem;">
-                    <svg style="width:20px; height:20px; fill:#EF4444;"
-                         focusable="false" viewBox="0 0 24 24">
-                        <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58
-                         2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2
-                         2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
-                    </svg>
-                </span>
-                Logout
-            </a>
-        </div>
-
     </MudDrawer>
 
-    <!-- Top App Bar -->
     <MudAppBar Elevation="0" Style="">
-        @* <MudIconButton Icon="@Icons.Material.Filled.Menu"
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
-                       OnClick="ToggleDrawer" /> *@
-
-        @* <MudText Typo="Typo.h6" Style="font-weight:600;">
-            @pageTitle
-        </MudText> *@
-
+                       OnClick="ToggleDrawer" />
         <MudSpacer />
-
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
 
-            @* <MudTooltip Text="@(_isDarkMode ? "Light Mode" : "Dark Mode")">
-                <MudIconButton Icon="@(_isDarkMode
-                                                           ? Icons.Material.Filled.LightMode
-                                                           : Icons.Material.Filled.DarkMode)"
-                               OnClick="ToggleDarkMode"
-                               Color="Color.Inherit" />
+            <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
+                <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                               Style="color:#EF4444;"
+                               OnClick="@OpenLogoutDialog" />
             </MudTooltip>
-
-            <MudTooltip Text="Notifications">
-                <MudBadge Content="@pendingOrders"
-                          Color="Color.Error"
-                          Overlap="true"
-                          Visible="@(pendingOrders > 0)">
-                    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
-                                   Color="Color.Inherit" />
-                </MudBadge>
-            </MudTooltip> *@
-
-
 
             <MudAvatar Color="Color.Primary"
                        Style="cursor:pointer; margin-left:8px;
@@ -173,7 +122,6 @@
         </MudStack>
     </MudAppBar>
 
-    <!-- Main Content -->
     <MudMainContent Style="@mainContentStyle">
         <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
             @Body
@@ -235,7 +183,7 @@
         : "color:#4B5563; border-radius:8px; margin:2px 8px;";
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
-    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
+
 
     protected override void OnParametersSet()
     {
@@ -251,17 +199,12 @@
             _ => "Dashboard"
         };
     }
-
-    // private async Task HandleLogout()
-    // {
-    //     await AuthService.LogoutAsync();
-    //     Navigation.NavigateTo("/login", forceLoad: true);
-    // }
-
-    private void HandleLogout()
+    private async Task OpenLogoutDialog()
     {
-        Navigation.NavigateTo("/account/logout", forceLoad: true);
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to logout?");
+        if (confirmed)
+        {
+            Navigation.NavigateTo("/account/logout", forceLoad: true);
+        }
     }
-
-
 }

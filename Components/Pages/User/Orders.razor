@@ -1,0 +1,539 @@
+﻿@page "/user/orders"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject IOrderService OrderService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<MudPaper Elevation="0" Class="mb-4 rounded-lg"
+          Style="border:1px solid var(--mud-palette-divider);">
+    <MudTabs @bind-ActivePanelIndex="activeTab"
+             Color="Color.Primary"
+             Rounded="true"
+             PanelClass="pa-0">
+
+        <MudTabPanel Text="All Orders">
+            @OrderList(orders)
+        </MudTabPanel>
+
+        <MudTabPanel Text="Active">
+            @OrderList(orders.Where(o =>
+                o.Status == OrderStatus.Pending ||
+                o.Status == OrderStatus.Processing ||
+                o.Status == OrderStatus.Shipped).ToList())
+        </MudTabPanel>
+
+        <MudTabPanel Text="Delivered">
+            @OrderList(orders.Where(o =>
+                o.Status == OrderStatus.Delivered).ToList())
+        </MudTabPanel>
+
+        <MudTabPanel Text="Cancelled">
+            @OrderList(orders.Where(o =>
+                o.Status == OrderStatus.Cancelled).ToList())
+        </MudTabPanel>
+
+    </MudTabs>
+</MudPaper>
+<MudDialog @bind-Visible="showDetail"
+           Options="@(new DialogOptions {
+               MaxWidth = MaxWidth.Medium,
+               FullWidth = true,
+               CloseOnEscapeKey = true })">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center"
+                  Justify="Justify.SpaceBetween">
+            <MudText Typo="Typo.h6" Style="font-weight:700;">
+                Order #@selectedOrder?.OrderNumber
+            </MudText>
+            @if (selectedOrder != null)
+            {
+                <MudChip T="string" Size="Size.Small"
+                         Style="@GetStatusStyle(selectedOrder.Status)">
+                    @selectedOrder.Status
+                </MudChip>
+            }
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        @if (selectedOrder != null)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="6" >
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Order Date
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">
+                        @selectedOrder.OrderDate.ToString("MMM dd, yyyy")
+                    </MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Payment Method
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight:600;">
+                        @selectedOrder.PaymentMethod
+                    </MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Payment Status
+                    </MudText>
+                    <MudChip T="string" Size="Size.Small"
+                             Style="background:#ECFDF5; color:#10B981; font-weight:600;">
+                        Paid
+                    </MudChip>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                        Total Amount
+                    </MudText>
+                    <MudText Style="font-weight:800;" Color="Color.Success">
+                        $@selectedOrder.TotalAmount.ToString("N2")
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+            <MudPaper Elevation="0" Class=" mb-4 rounded-lg"
+                      Style="background:var(--mud-palette-background-grey);">
+                <MudStack Row="true" AlignItems="AlignItems.Center"
+                          Spacing="1" Class="mb-1">
+                    <MudIcon Icon="@Icons.Material.Filled.LocationOn"
+                             Style="font-size:1rem;" />
+                    <MudText Typo="Typo.subtitle2"
+                             Style="font-weight:700;">
+                        Shipping Address
+                    </MudText>
+                </MudStack>
+                <MudText Typo="Typo.body2" Color="Color.Primary" Style="margin-left:4px;">
+                    @selectedOrder.ShippingAddress
+                </MudText>
+            </MudPaper>
+
+         
+            <MudText Typo="Typo.subtitle2"
+                     Style="font-weight:700;" Class="mb-3">
+                Items (@selectedOrder.OrderItems.Count)
+            </MudText>
+            <MudStack Spacing="2" Class="mb-4"  Style="border:1px solid var(--mud-palette-divider);">
+                @foreach (var item in selectedOrder.OrderItems)
+                {
+                    <MudPaper Elevation="0" Class="pa-3 rounded-lg">
+                        <MudStack Row="true"
+                                  AlignItems="AlignItems.Center"
+                                  Justify="Justify.SpaceBetween">
+                            <MudStack Row="true"
+                                      AlignItems="AlignItems.Center"
+                                      Spacing="2">
+                                <div style="width:44px; height:44px;
+                                            background:#EEF2FF;
+                                            border-radius:8px;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;">
+
+                                    <img src="" style="width:100%; height:100%;object-fit:contain;" />
+                                </div>
+                                <div>
+                                    <MudText Typo="Typo.body2"
+                                             Style="font-weight:600;">
+                                        @item.Product?.Name
+                                    </MudText>
+                                    <MudText Typo="Typo.caption"
+                                             Color="Color.Primary"> 
+                                        Qty: @item.Quantity ×
+                                        $@item.UnitPrice.ToString("N2")
+                                    </MudText>
+                                </div>
+                            </MudStack>
+                            <MudText Style="font-weight:700;" Color="Color.Success">
+                                $@item.TotalPrice.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </MudStack>
+            <MudPaper Elevation="0" Class="pa-4 rounded-lg"  Style="border:1px solid
+                                     var(--mud-palette-divider);">
+                <MudStack Spacing="1">
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Primary">
+                            Subtotal
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            $@selectedOrder.SubTotal.ToString("N2")
+                        </MudText>
+                    </MudStack>
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.body2" Color="Color.Primary">
+                            Shipping
+                        </MudText>
+                        <MudText Typo="Typo.body2"
+                                 Style="@(selectedOrder.ShippingCost == 0
+                                          ? "color:#10B981; font-weight:600;"
+                                          : "")">
+                            @(selectedOrder.ShippingCost == 0
+                              ? "FREE"
+                              : $"${selectedOrder.ShippingCost:N2}")
+                        </MudText>
+                    </MudStack>
+                    @if (selectedOrder.Discount > 0)
+                    {
+                        <MudStack Row="true"
+                                  Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.body2"
+                                     Color="Color.Secondary">
+                                Discount
+                            </MudText>
+                            <MudText Typo="Typo.body2"
+                                     Style="color:#10B981;">
+                                -$@selectedOrder.Discount.ToString("N2")
+                            </MudText>
+                        </MudStack>
+                    }
+                    <MudDivider />
+                    <MudStack Row="true" Justify="Justify.SpaceBetween">
+                        <MudText Style="font-weight:700;">Total</MudText>
+                        <MudText Style="font-weight:700;" Color="Color.Success">
+                            $@selectedOrder.TotalAmount.ToString("N2")
+                        </MudText>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+            <MudText Typo="Typo.subtitle2"
+                     Style="font-weight:700;" Class="mt-4 mb-3">
+                Order Timeline
+            </MudText>
+            <MudTimeline TimelinePosition="TimelinePosition.Left">
+                <MudTimelineItem Color="Color.Success" Size="Size.Small">
+                    <ItemContent>
+                        <MudText Typo="Typo.body2"
+                                 Style="font-weight:600;">
+                            Order Placed
+                        </MudText>
+                        <MudText Typo="Typo.caption"
+                                 Color="Color.Primary">
+                            Order Placed Successfully
+                        </MudText>
+                    </ItemContent>
+                </MudTimelineItem>
+
+                @if (selectedOrder.Status >= OrderStatus.Processing)
+                {
+                    <MudTimelineItem Color="Color.Warning"
+                                     Size="Size.Small">
+                        <ItemContent>
+                            <MudText Typo="Typo.body2"
+                                     Style="font-weight:600;">
+                                Processing 
+                            </MudText>
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Primary">
+                                Order is being prepared
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+
+                @if (selectedOrder.Status >= OrderStatus.Shipped)
+                {
+                    <MudTimelineItem Color="Color.Primary"
+                                     Size="Size.Small">
+                        <ItemContent>
+                            <MudText Typo="Typo.body2"
+                                     Style="font-weight:600;">
+                                Shipped
+                            </MudText>
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Primary">
+                                Order is on the way
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+
+                @if (selectedOrder.Status == OrderStatus.Delivered)
+                {
+                    <MudTimelineItem Color="Color.Success"
+                                     Size="Size.Small">
+                        <ItemContent>
+                            <MudText Typo="Typo.body2"
+                                     Style="font-weight:600;">
+                                Delivered
+                            </MudText>
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Primary">
+                                Order delivered successfully
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+
+                @if (selectedOrder.Status == OrderStatus.Cancelled)
+                {
+                    <MudTimelineItem Color="Color.Error"
+                                     Size="Size.Small">
+                        <ItemContent>
+                            <MudText Typo="Typo.body2"
+                                     Style="font-weight:600;">
+                                Cancelled
+                            </MudText>
+                            <MudText Typo="Typo.caption"
+                                     Color="Color.Primary">
+                                Order was cancelled
+                            </MudText>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+
+            </MudTimeline>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="@(() => showDetail = false)">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool isLoading = true;
+    private bool showDetail = false;
+    private int activeTab = 0;
+    private string userId = string.Empty;
+
+    private List<Order> orders = new();
+    private Order? selectedOrder = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)
+                ?.Value ?? string.Empty;
+        }
+
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        isLoading = true;
+        try
+        {
+            orders = await OrderService.GetByUserAsync(userId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewOrder(Order order)
+    {
+        selectedOrder = order;
+        showDetail    = true;
+    }
+
+    private RenderFragment OrderList(List<Order> list) => __builder =>
+    {
+        if (isLoading)
+        {
+            __builder.OpenComponent<MudStack>(0);
+            __builder.AddAttribute(1, "AlignItems", AlignItems.Center);
+            __builder.AddAttribute(2, "Class", "py-12");
+            __builder.AddAttribute(3, "ChildContent", (RenderFragment)(__builder2 =>
+            {
+                __builder2.OpenComponent<MudProgressCircular>(0);
+                __builder2.AddAttribute(1, "Color", Color.Primary);
+                __builder2.AddAttribute(2, "Indeterminate", true);
+                __builder2.CloseComponent();
+            }));
+            __builder.CloseComponent();
+        }
+        else if (!list.Any())
+        {
+            __builder.OpenComponent<MudStack>(0);
+            __builder.AddAttribute(1, "AlignItems", AlignItems.Center);
+            __builder.AddAttribute(2, "Class", "py-12");
+            __builder.AddAttribute(3, "ChildContent", (RenderFragment)(__builder2 =>
+            {
+                __builder2.OpenComponent<MudIcon>(0);
+                __builder2.AddAttribute(1, "Icon",
+                    Icons.Material.Filled.ShoppingBag);
+                __builder2.AddAttribute(2, "Style",
+                    "font-size:4rem; color:#D1D5DB;");
+                __builder2.CloseComponent();
+
+                __builder2.OpenComponent<MudText>(3);
+                __builder2.AddAttribute(4, "Typo", Typo.h6);
+                __builder2.AddAttribute(5, "Color", Color.Secondary);
+                __builder2.AddAttribute(6, "ChildContent",
+                    (RenderFragment)(b => b.AddContent(0, "No orders found")));
+                __builder2.CloseComponent();
+
+                __builder2.OpenComponent<MudButton>(7);
+                __builder2.AddAttribute(8, "Variant", Variant.Filled);
+                __builder2.AddAttribute(9, "Color", Color.Primary);
+                __builder2.AddAttribute(10, "Href", "/user/products");
+                __builder2.AddAttribute(11, "Class", "mt-2");
+                __builder2.AddAttribute(12, "ChildContent",
+                    (RenderFragment)(b => b.AddContent(0, "Start Shopping")));
+                __builder2.CloseComponent();
+            }));
+            __builder.CloseComponent();
+        }
+        else
+        {
+            foreach (var order in list)
+            {
+                var o = order;
+                <div class="order-card" style="margin-bottom:12px; padding:16px;">
+                    <MudPaper Elevation="0" Class="rounded-lg"
+                              Style="border:1px solid var(--mud-palette-divider);
+                                     overflow:hidden;">
+                        <div style="padding:16px; border-bottom:1px solid
+                                    var(--mud-palette-divider);">
+                            <MudStack Row="true" AlignItems="AlignItems.Center"
+                                      Justify="Justify.SpaceBetween">
+                                <MudStack Row="true"
+                                          AlignItems="AlignItems.Center"
+                                          Spacing="3">
+                                    <MudAvatar Style="background:#EEF2FF;
+                                                      width:42px; height:42px;">
+                                        <MudIcon
+                                            Icon="@Icons.Material.Filled.Receipt"
+                                            Style="color:#6C63FF;" />
+                                    </MudAvatar>
+                                    <div>
+                                        <MudText Style="font-weight:700;
+                                                        color:#6C63FF;">
+                                            #@o.OrderNumber
+                                        </MudText>
+                                        <MudText Typo="Typo.caption"
+                                                 Color="Color.Secondary">
+                                            @o.OrderDate.ToString(
+                                                "MMM dd, yyyy hh:mm tt")
+                                        </MudText>
+                                    </div>
+                                </MudStack>
+                                <MudChip T="string" Size="Size.Small"
+                                         Style="@GetStatusStyle(o.Status)">
+                                    @o.Status
+                                </MudChip>
+                            </MudStack>
+                        </div>
+                        <div style="padding:16px; border-bottom:1px solid
+                                    var(--mud-palette-divider);">
+                            <MudStack Spacing="2">
+                                @foreach (var item in o.OrderItems.Take(2))
+                                {
+                                    <MudStack Row="true"
+                                              AlignItems="AlignItems.Center"
+                                              Spacing="2">
+                                        <div style="width:40px; height:40px;
+                                                    background:#F3F4F6;
+                                                    border-radius:8px;
+                                                    display:flex;
+                                                    align-items:center;
+                                                    justify-content:center;
+                                                    overflow:hidden;">
+                                            @if (!string.IsNullOrEmpty(
+                                                item.Product?.MainImageUrl))
+                                            {
+                                                <img src="@item.Product.MainImageUrl"
+                                                     style="width:100%;
+                                                            height:100%;
+                                                            object-fit:contain;" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon
+                                                    Icon="@Icons.Material.Filled.Inventory2"
+                                                    Style="color:#D1D5DB;
+                                                           font-size:1rem;" />
+                                            }
+                                        </div>
+                                        <MudText Typo="Typo.body2"
+                                                 Style="font-weight:600;
+                                                        flex:1;">
+                                            @item.Product?.Name
+                                        </MudText>
+                                        <MudText Typo="Typo.caption"
+                                                 Color="Color.Secondary">
+                                            ×@item.Quantity
+                                        </MudText>
+                                    </MudStack>
+                                }
+                                @if (o.OrderItems.Count > 2)
+                                {
+                                    <MudText Typo="Typo.caption"
+                                             Style="color:#6C63FF;">
+                                        +@(o.OrderItems.Count - 2) more items
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </div>
+                        <div style="padding:12px 16px;">
+                            <MudStack Row="true"
+                                      AlignItems="AlignItems.Center"
+                                      Justify="Justify.SpaceBetween">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.caption"
+                                             Color="Color.Secondary">
+                                        Total Amount
+                                    </MudText>
+                                    <MudText Style="font-weight:800;
+                                                    font-size:1.1rem;
+                                                    color:#6C63FF;">
+                                        $@o.TotalAmount.ToString("N2")
+                                    </MudText>
+                                </MudStack>
+                                <MudStack Row="true" Spacing="2">
+                                    <MudButton
+                                        Variant="Variant.Outlined"
+                                        Color="Color.Primary"
+                                        Size="Size.Small"
+                                        StartIcon="@Icons.Material.Filled.Visibility"
+                                        Style="border-radius:8px;"
+                                        OnClick="@(() => ViewOrder(o))">
+                                        View Details
+                                    </MudButton>
+                                    @if (o.Status == OrderStatus.Delivered)
+                                    {
+                                        <MudButton
+                                            Variant="Variant.Filled"
+                                            Color="Color.Primary"
+                                            Size="Size.Small"
+                                            StartIcon="@Icons.Material.Filled.Replay"
+                                            Style="border-radius:8px;"
+                                            Href="/user/products">
+                                            Buy Again
+                                        </MudButton>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </div>
+
+                    </MudPaper>
+                </div>
+            }
+        }
+    };
+
+    private string GetStatusStyle(OrderStatus status) => status switch
+    {
+        OrderStatus.Delivered  => "background:#ECFDF5; color:#10B981; font-weight:600;",
+        OrderStatus.Shipped    => "background:#EEF2FF; color:#6C63FF; font-weight:600;",
+        OrderStatus.Processing => "background:#FFFBEB; color:#F59E0B; font-weight:600;",
+        OrderStatus.Pending    => "background:#FFF0F3; color:#FF6584; font-weight:600;",
+        OrderStatus.Cancelled  => "background:#F3F4F6; color:#6B7280; font-weight:600;",
+        _                      => "background:#F3F4F6; color:#6B7280; font-weight:600;"
+    };
+}

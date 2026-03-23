@@ -1,24 +1,26 @@
 ﻿using ECommerce.Data;
 using ECommerce.Models;
 using ECommerce.Services.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 namespace ECommerce.Services
 {
     public class AddressService : IAddressService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDbContextFactory<ApplicationDbContext> _factory;
 
-        public AddressService(ApplicationDbContext context)
+        public AddressService(IDbContextFactory<ApplicationDbContext> factory)
         {
-            _context = context;
+            _factory = factory;
         }
 
         public async Task<Address?> SaveAddressAsync(Address address)
         {
             try
             {
-                _context.Addresses.Add(address);
-                await _context.SaveChangesAsync();
+                await using var context = await _factory.CreateDbContextAsync();
+                context.Addresses.Add(address);
+                await context.SaveChangesAsync();
                 return address;
             }
             catch
