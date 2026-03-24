@@ -18,6 +18,7 @@ namespace ECommerce.Services
         {
             await using var context = await _factory.CreateDbContextAsync();
             return await context.Products
+                .Include(p => p.Category)
                 .ToListAsync();
         }
 
