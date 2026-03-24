@@ -132,7 +132,7 @@
                                             align-items:center;
                                             justify-content:center;">
 
-                                    <img src="" style="width:100%; height:100%;object-fit:contain;" />
+                                    <img src="@item.Product.MainImageUrl" style="width:100%; height:100%;object-fit:contain" />
                                 </div>
                                 <div>
                                     <MudText Typo="Typo.body2"
@@ -157,21 +157,21 @@
                                      var(--mud-palette-divider);">
                 <MudStack Spacing="1">
                     <MudStack Row="true" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.body2" Color="Color.Primary">
+                        <MudText Typo="Typo.body2" >
                             Subtotal
                         </MudText>
-                        <MudText Typo="Typo.body2">
+                        <MudText Typo="Typo.body2" Color="Color.Primary">
                             $@selectedOrder.SubTotal.ToString("N2")
                         </MudText>
                     </MudStack>
                     <MudStack Row="true" Justify="Justify.SpaceBetween">
-                        <MudText Typo="Typo.body2" Color="Color.Primary">
+                        <MudText Typo="Typo.body2">
                             Shipping
                         </MudText>
                         <MudText Typo="Typo.body2"
                                  Style="@(selectedOrder.ShippingCost == 0
                                           ? "color:#10B981; font-weight:600;"
-                                          : "")">
+                                          : "")" Color="Color.Primary">
                             @(selectedOrder.ShippingCost == 0
                               ? "FREE"
                               : $"${selectedOrder.ShippingCost:N2}")

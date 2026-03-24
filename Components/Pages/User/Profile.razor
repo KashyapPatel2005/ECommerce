@@ -1,0 +1,430 @@
+﻿@page "/user/profile"
+@rendermode InteractiveServer
+@layout UserLayout
+@attribute [Authorize(Roles = "User")]
+@inject AuthenticationStateProvider AuthStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject ISnackbar Snackbar
+
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Navigation
+
+@if (isLoading)
+{
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center" Style="min-height:300px;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    </MudStack>
+}
+else
+{
+    <MudGrid Spacing="4">
+
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="0" Class="pa-6 rounded-lg"
+                      Style="border:1px solid var(--mud-palette-divider);
+                             text-align:center;">
+
+                <MudAvatar Style="background:linear-gradient(
+                                  135deg,#6C63FF,#FF6584);
+                                  width:90px; height:90px;
+                                  font-size:2rem; font-weight:700;
+                                  color:white; margin:0 auto 16px;">
+                    @userInitials
+                </MudAvatar>
+
+                <MudText Typo="Typo.h6" Style="font-weight:700;">
+                    @($"{firstName} {lastName}")
+                </MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary"
+                         Class="mb-4">
+                    @email
+                </MudText>
+
+                <MudTooltip Text="Sign out of your account" Placement="Placement.Bottom" Color="Color.Secondary">
+                    <MudButton Variant="Variant.Text" 
+                               StartIcon="@Icons.Material.Filled.Logout" 
+                               Style="color:#EF4444;background:rgba(108,99,255,0.1);" 
+                               OnClick="@OpenLogoutDialog">
+                        Logout
+                    </MudButton>
+                </MudTooltip>
+
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="0" Class="pa-6 rounded-lg mb-4"
+                      Style="border:1px solid var(--mud-palette-divider);">
+
+                <MudStack Row="true" AlignItems="AlignItems.Center"
+                          Spacing="2" Class="mb-5">
+                    <MudAvatar Style="background:rgba(108,99,255,0.1);
+                                      width:40px; height:40px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Person"
+                                 Style="color:#6C63FF;" />
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.h6" Style="font-weight:700;">
+                            Personal Info
+                        </MudText>
+                        <MudText Typo="Typo.caption"
+                                 Color="Color.Secondary">
+                            Update your personal details
+                        </MudText>
+                    </div>
+                </MudStack>
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      @bind-Value="firstName"
+                                      Label="First Name"
+                                      Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Person"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField T="string"
+                                      @bind-Value="lastName"
+                                      Label="Last Name"
+                                      Variant="Variant.Outlined"
+                                      FullWidth="true" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField T="string"
+                                      @bind-Value="email"
+                                      Label="Email Address"
+                                      Variant="Variant.Outlined"
+                                      InputType="InputType.Email"
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Email"
+                                      FullWidth="true" />
+                    </MudItem>
+                </MudGrid>
+
+                @if (!string.IsNullOrEmpty(infoError))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">
+                        @infoError
+                    </MudAlert>
+                }
+                <MudStack Row="true" Spacing="2" Class="mt-5">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Style="flex:1; border-radius:12px;
+                                      font-weight:700;"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               Disabled="@isSavingInfo"
+                               OnClick="SavePersonalInfo">
+                        @if (isSavingInfo)
+                        {
+                            <MudProgressCircular Size="Size.Small"
+                                                 Indeterminate="true"
+                                                 Class="mr-2" />
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Style="flex:1; border-radius:12px;
+                                      font-weight:700;"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Filled.Lock"
+                               OnClick="@(() => showPasswordDialog = true)">
+                        Change Password
+                    </MudButton>
+                </MudStack>
+
+            </MudPaper>
+        </MudItem>
+
+    </MudGrid>
+}
+<MudDialog @bind-Visible="showPasswordDialog"
+           Options="@(new DialogOptions {
+               MaxWidth = MaxWidth.Small,
+               FullWidth = true,
+               CloseOnEscapeKey = true })">
+    <TitleContent>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Style="background:rgba(239,68,68,0.1);
+                              width:36px; height:36px;">
+                <MudIcon Icon="@Icons.Material.Filled.Lock"
+                         Style="color:#EF4444; font-size:1.1rem;" />
+            </MudAvatar>
+            <MudText Typo="Typo.h6" Style="font-weight:700;">
+                Change Password
+            </MudText>
+        </MudStack>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            <MudTextField T="string"
+                          @bind-Value="currentPassword"
+                          Label="Current Password"
+                          Variant="Variant.Outlined"
+                          InputType="@currentPwdType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@currentPwdIcon"
+                          OnAdornmentClick="ToggleCurrentPwd"
+                          FullWidth="true" />
+
+            <MudTextField T="string"
+                          @bind-Value="newPassword"
+                          Label="New Password"
+                          Variant="Variant.Outlined"
+                          InputType="@newPwdType"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@newPwdIcon"
+                          OnAdornmentClick="ToggleNewPwd"
+                          FullWidth="true" />
+            <MudTextField T="string"
+                          @bind-Value="confirmPassword"
+                          Label="Confirm New Password"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Password"
+                          FullWidth="true" />
+
+            @if (!string.IsNullOrEmpty(passwordError))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @passwordError
+                </MudAlert>
+            }
+
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined"
+                   OnClick="ClosePasswordDialog">
+            Cancel
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.Lock"
+                   Disabled="@isSavingPassword"
+                   OnClick="ChangePassword">
+            @if (isSavingPassword)
+            {
+                <MudProgressCircular Size="Size.Small"
+                                     Indeterminate="true"
+                                     Class="mr-2" />
+                <span>Updating...</span>
+            }
+            else
+            {
+                <span>Update Password</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool isLoading          = true;
+    private bool isSavingInfo       = false;
+    private bool isSavingPassword   = false;
+    private bool showPasswordDialog = false;
+
+    private string userId       = string.Empty;
+    private string firstName    = string.Empty;
+    private string lastName     = string.Empty;
+    private string email        = string.Empty;
+    private string userInitials = "U";
+
+    private string currentPassword  = string.Empty;
+    private string newPassword      = string.Empty;
+    private string confirmPassword  = string.Empty;
+
+    private string infoError     = string.Empty;
+    private string passwordError = string.Empty;
+    private InputType currentPwdType = InputType.Password;
+    private InputType newPwdType     = InputType.Password;
+    private string currentPwdIcon    =
+        Icons.Material.Filled.VisibilityOff;
+    private string newPwdIcon        =
+        Icons.Material.Filled.VisibilityOff;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider
+            .GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier)
+                ?.Value ?? string.Empty;
+
+            var appUser = await UserManager.FindByIdAsync(userId);
+            if (appUser is not null)
+            {
+                firstName    = appUser.FirstName ?? string.Empty;
+                lastName     = appUser.LastName  ?? string.Empty;
+                email        = appUser.Email     ?? string.Empty;
+                userInitials = $"{firstName.FirstOrDefault()}" +
+                               $"{lastName.FirstOrDefault()}"
+                               .ToUpper();
+            }
+        }
+
+        isLoading = false;
+    }
+
+    private async Task SavePersonalInfo()
+    {
+        infoError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(firstName) ||
+            string.IsNullOrWhiteSpace(lastName)  ||
+            string.IsNullOrWhiteSpace(email))
+        {
+            infoError = "First name, last name and email are required.";
+            return;
+        }
+
+        isSavingInfo = true;
+        try
+        {
+            var appUser = await UserManager.FindByIdAsync(userId);
+            if (appUser is null) return;
+
+            appUser.FirstName = firstName;
+            appUser.LastName  = lastName;
+            appUser.Email     = email;
+            appUser.UserName  = email;
+
+            var result = await UserManager.UpdateAsync(appUser);
+
+            if (result.Succeeded)
+            {
+                userInitials =
+                    $"{firstName.FirstOrDefault()}" +
+                    $"{lastName.FirstOrDefault()}"
+                    .ToUpper();
+                Snackbar.Add("Profile updated successfully!",
+                    Severity.Success);
+            }
+            else
+            {
+                infoError = string.Join(", ",
+                    result.Errors.Select(e => e.Description));
+            }
+        }
+        finally
+        {
+            isSavingInfo = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        passwordError = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(currentPassword) ||
+            string.IsNullOrWhiteSpace(newPassword)     ||
+            string.IsNullOrWhiteSpace(confirmPassword))
+        {
+            passwordError = "All password fields are required.";
+            return;
+        }
+
+        if (newPassword != confirmPassword)
+        {
+            passwordError = "New passwords do not match.";
+            return;
+        }
+
+        if (newPassword.Length < 6)
+        {
+            passwordError = "Password must be at least 6 characters.";
+            return;
+        }
+
+        isSavingPassword = true;
+        try
+        {
+            var appUser = await UserManager.FindByIdAsync(userId);
+            if (appUser is null) return;
+
+            var result = await UserManager.ChangePasswordAsync(
+                appUser, currentPassword, newPassword);
+
+            if (result.Succeeded)
+            {
+                Snackbar.Add("Password changed successfully!",
+                    Severity.Success);
+                await Task.Delay(1000);
+                ClosePasswordDialog();
+            }
+            else
+            {
+                passwordError = string.Join(", ",
+                    result.Errors.Select(e => e.Description));
+            }
+        }
+        finally
+        {
+            isSavingPassword = false;
+        }
+    }
+
+        private async Task OpenLogoutDialog()
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to logout?");
+        if (confirmed)
+        {
+            Navigation.NavigateTo("/account/logout", forceLoad: true);
+        }
+    }
+
+    private void ClosePasswordDialog()
+    {
+        showPasswordDialog = false;
+        currentPassword    = string.Empty;
+        newPassword        = string.Empty;
+        confirmPassword    = string.Empty;
+        passwordError      = string.Empty;
+        currentPwdType     = InputType.Password;
+        newPwdType         = InputType.Password;
+        currentPwdIcon     = Icons.Material.Filled.VisibilityOff;
+        newPwdIcon         = Icons.Material.Filled.VisibilityOff;
+    }
+
+    private void ToggleCurrentPwd()
+    {
+        if (currentPwdType == InputType.Password)
+        {
+            currentPwdType = InputType.Text;
+            currentPwdIcon = Icons.Material.Filled.Visibility;
+        }
+        else
+        {
+            currentPwdType = InputType.Password;
+            currentPwdIcon = Icons.Material.Filled.VisibilityOff;
+        }
+    }
+
+    private void ToggleNewPwd()
+    {
+        if (newPwdType == InputType.Password)
+        {
+            newPwdType = InputType.Text;
+            newPwdIcon = Icons.Material.Filled.Visibility;
+        }
+        else
+        {
+            newPwdType = InputType.Password;
+            newPwdIcon = Icons.Material.Filled.VisibilityOff;
+        }
+    }
+
+
+}

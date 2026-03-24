@@ -131,7 +131,6 @@
 </MudLayout>
 
 @code { 
-    private bool _isDarkMode = false;
     private bool _drawerOpen = true;
     private int pendingOrders = 0;
     private string pageTitle = "Dashboard";
@@ -150,37 +149,16 @@
             TextSecondary = "#6B7280",
             DrawerBackground = "#FFFFFF",
             DrawerText = "#1A1A2E",
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#6C63FF",
-            Secondary = "#FF6584",
-            AppbarBackground = "#1A1A2E",
-            AppbarText = "#FFFFFF",
-            Background = "#0F0F1A",
-            Surface = "#1A1A2E",
-            TextPrimary = "#FFFFFF",
-            TextSecondary = "#9CA3AF",
-            DrawerBackground = "#1A1A2E",
-            DrawerText = "#FFFFFF",
         }
     };
 
-    private string sidebarStyle => _isDarkMode
-        ? "background:#1A1A2E; border-right:1px solid #2D2D44; width:260px;"
-        : "background:#FFFFFF; border-right:1px solid #E5E7EB; width:260px;";
+    private string sidebarStyle = "background:#FFFFFF; border-right:1px solid #E5E7EB; width:260px;";
 
-    private string appBarStyle => _isDarkMode
-        ? "background:#1A1A2E; border-bottom:1px solid #2D2D44; left:260px;"
-        : "background:#FFFFFF; border-bottom:1px solid #E5E7EB; left:260px;";
+    private string appBarStyle = "background:#FFFFFF; border-bottom:1px solid #E5E7EB; left:260px;";
 
-    private string mainContentStyle => _isDarkMode
-        ? "background:#0F0F1A; min-height:100vh;"
-        : "background:#F8F9FA; min-height:100vh;";
+    private string mainContentStyle = "background:#F8F9FA; min-height:100vh;";
 
-    private string navLinkStyle => _isDarkMode
-        ? "color:#9CA3AF; border-radius:8px; margin:2px 8px;"
-        : "color:#4B5563; border-radius:8px; margin:2px 8px;";
+    private string navLinkStyle = "color:#4B5563; border-radius:8px; margin:2px 8px;";
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
 

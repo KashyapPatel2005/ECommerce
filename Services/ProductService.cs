@@ -17,7 +17,8 @@ namespace ECommerce.Services
         public async Task<List<Product>> GetAllAsync()
         {
             await using var context = await _factory.CreateDbContextAsync();
-            return await context.Products.ToListAsync();
+            return await context.Products
+                .ToListAsync();
         }
 
         public async Task<Product?> GetByIdAsync(int id)

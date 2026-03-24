@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 
 
-<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" @rendermode="InteractiveServer" />
+<MudThemeProvider Theme="_theme"  @rendermode="InteractiveServer" />
 <MudDialogProvider @rendermode="InteractiveServer" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
 <MudPopoverProvider @rendermode="InteractiveServer" />
@@ -58,6 +58,7 @@
 
             <MudTooltip Text="Cart">
                 <MudBadge Content="@cartCount"
+                          T="int"
                           Color="Color.Error"
                           Overlap="true"
                           Visible="@(cartCount > 0)">
@@ -66,37 +67,14 @@
                                    Href="/user/cart" />
                 </MudBadge>
             </MudTooltip>
-
-            @* <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
-                <a href="/account/logout" style="text-decoration:none;"> 
-                    <MudIconButton Icon="@Icons.Material.Filled.Logout"
-                                   Style="color:#EF4444;"
-                                   OnClick="OpenLogoutDialog" />
-                </a> 
-            </MudTooltip> *@
-
-            <MudTooltip Text="Logout" Placement="Placement.Bottom" Color="Color.Primary">
-                <MudIconButton Icon="@Icons.Material.Filled.Logout"
-                               Style="color:#EF4444;"
-                               OnClick="@OpenLogoutDialog" />
-            </MudTooltip>
-
-            <MudMenu AnchorOrigin="Origin.BottomRight"
-                     TransformOrigin="Origin.TopRight"
-                     Class="ml-1">
-                <ActivatorContent>
-                    <MudAvatar Style="cursor:pointer;
-                                      background:linear-gradient(135deg,#6C63FF,#FF6584);
-                                      width:36px; height:36px;">
-                        <MudText Style="color:white; font-weight:700;
-                                        font-size:14px;">
-                            @userInitials
-                        </MudText>
-                    </MudAvatar>
-                </ActivatorContent>
-
-            </MudMenu>
-
+            <MudAvatar Style="cursor:pointer;
+                  background:linear-gradient(135deg,#6C63FF,#FF6584);
+                  width:36px; height:36px;" @onclick='() => Navigation.NavigateTo("user/profile")'>
+                    <MudText Style="color:white; font-weight:700; font-size:14px;">
+                        @userInitials
+                    </MudText>
+            </MudAvatar>
+          
         </MudStack>
     </MudAppBar>
 
@@ -109,7 +87,6 @@
 </MudLayout>
 
 @code {
-    private bool _isDarkMode = false;
     private string searchQuery = string.Empty;
     private string userName = string.Empty;
     private string userEmail = string.Empty;
@@ -129,37 +106,20 @@
             Surface = "#FFFFFF",
             TextPrimary = "#1A1A2E",
             TextSecondary = "#6B7280",
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#6C63FF",
-            Secondary = "#FF6584",
-            AppbarBackground = "#111827",
-            AppbarText = "#F9FAFB",
-            Background = "#0D1117",
-            Surface = "#161B22",
-            TextPrimary = "#F9FAFB",
-            TextSecondary = "#9CA3AF",
         }
     };
 
-    private string appBarStyle => _isDarkMode
-        ? "background:#111827; border-bottom:1px solid rgba(255,255,255,0.06);"
-        : "background:#FFFFFF; border-bottom:1px solid rgba(0,0,0,0.06);";
+    private string appBarStyle = "background:#FFFFFF; border-bottom:1px solid rgba(0,0,0,0.06);";
 
-    private string mainContentStyle => _isDarkMode
-        ? "background:#0D1117; min-height:100vh;"
-        : "background:#F4F6FB; min-height:100vh;";
+    private string mainContentStyle = "background:#F4F6FB; min-height:100vh;";
 
     private string GetNavStyle(string path)
     {
         var isActive = Navigation.Uri.Contains(path);
         return isActive
             ? "color:#6C63FF; font-weight:700;"
-            : (_isDarkMode ? "color:#9CA3AF;" : "color:#4B5563;");
+            : ("color:#4B5563;");
     }
-
-    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
 
     private void HandleSearch(KeyboardEventArgs e)
     {
@@ -197,12 +157,18 @@
         }
     }
 
-    private async Task OpenLogoutDialog()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to logout?");
-        if (confirmed)
+        if (firstRender) return;
+
+        if (!string.IsNullOrEmpty(userId))
         {
-            Navigation.NavigateTo("/account/logout", forceLoad: true);
+            var newCount = await CartService.GetCartCountAsync(userId);
+            if (newCount != cartCount)
+            {
+                cartCount = newCount;
+                StateHasChanged();
+            }
         }
     }
 }
